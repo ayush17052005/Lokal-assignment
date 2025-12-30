@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
 import { useTheme } from '../../context/ThemeContext';
 import { RootStackParamList } from '../../types/navigation';
 import AlbumsScreen from './TabsScreen/AlbumsScreen';
@@ -90,6 +91,9 @@ const HomeScreen = ({ navigation }: Props) => {
       <View style={styles.content}>
         {renderTabContent()}
       </View>
+
+      {/* Mini Player */}
+      <MiniPlayer />
 
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { backgroundColor: colors.background, borderTopColor: colors.border }]}>

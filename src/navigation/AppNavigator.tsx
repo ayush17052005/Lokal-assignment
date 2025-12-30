@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import Player from '../components/Player/Player';
 import { useTheme } from '../context/ThemeContext';
+import AlbumDetails from '../screens/AlbumScreen/AlbumDetails';
 import ArtistDetails from '../screens/ArtistScreen/ArtistDetails';
 import HomeScreen from '../screens/HomeScreen/HomeScreen';
 import SearchScreen from '../screens/SearchScreen/SearchScreen';
@@ -67,11 +68,15 @@ const AppNavigator = () => {
           component={ArtistDetails}
           options={{ animation: 'slide_from_bottom' }}
         />
+        <Stack.Screen
+            name="AlbumDetails"
+            component={AlbumDetails}
+        />
         
         <Stack.Screen 
           name="Search" 
           component={SearchScreen}
-          options={{ animation: 'slide_from_right' }}
+        
         />
       </Stack.Navigator>
     </NavigationContainer>

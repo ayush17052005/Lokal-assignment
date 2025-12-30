@@ -1,17 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import {
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
+import { RootStackParamList } from '../../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AlbumsScreen = () => {
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
 
   const albums = [
     { id: '1', title: 'Dawn FM', artist: 'The Weeknd', year: 2022, songs: 16, cover: 'https://picsum.photos/300/300?random=20' },
@@ -20,8 +26,23 @@ const AlbumsScreen = () => {
     { id: '4', title: 'Pain (Official)', artist: 'Ryan Jones', year: 2021, songs: 18, cover: 'https://picsum.photos/300/300?random=23' },
   ];
 
+  const handleAlbumPress = (album: typeof albums[0]) => {
+    navigation.navigate('AlbumDetails', {
+      albumId: album.id,
+      name: album.title,
+      artist: album.artist,
+      year: album.year.toString(),
+      songs: album.songs,
+      imageUrl: album.cover,
+    });
+  };
+
   const renderAlbumItem = ({ item, index }: { item: typeof albums[0]; index: number }) => (
-    <TouchableOpacity style={[styles.albumItem, index % 2 === 0 && styles.albumItemLeft]}>
+    <TouchableOpacity 
+      style={[styles.albumItem, index % 2 === 0 && styles.albumItemLeft]}
+      onPress={() => handleAlbumPress(item)}
+      activeOpacity={0.7}
+    >
       <Image source={{ uri: item.cover }} style={styles.albumCover} />
       <View style={styles.albumInfo}>
         <View>

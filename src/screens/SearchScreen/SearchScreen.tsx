@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   ScrollView,
@@ -13,142 +14,134 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSearchAlbums, useSearchArtists, useSearchPlaylists, useSearchSongs } from '../../api/hooks';
+import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlbumActions, useArtistActions, useSongActions } from '../../hooks';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { addRecentSearch, clearAllRecentSearches, removeRecentSearch } from '../../store/slices/recentSearchesSlice';
 import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-type SearchState = 'default' | 'notfound' | 'results';
+
+type SearchState = 'default' | 'searching' | 'notfound' | 'results';
 
 const SearchScreen = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const dispatch = useAppDispatch();
+  const recentSearches = useAppSelector((state) => state.recentSearches.searches);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('default');
   const [activeFilter, setActiveFilter] = useState('Songs');
+  
+  // Centralized action hooks
+  const { playSong, getImageUrl: getSongImage } = useSongActions();
+  const { openArtistDetails, getImageUrl: getArtistImage } = useArtistActions();
+  const { openAlbumDetails, getImageUrl: getAlbumImage } = useAlbumActions();
 
-  // Recent searches
-  const [recentSearches, setRecentSearches] = useState([
-    'Ariana Grande',
-    'Morgan Wallen',
-    'Justin Bieber',
-    'Drake',
-    'Olivia Rodrigo',
-    'The Weeknd',
-    'Taylor Swift',
-    'Juice Wrld',
-    'Memories',
-  ]);
+  const filters = ['Songs', 'Artists', 'Albums', 'Playlists'];
 
-  // Search results (mock data)
-  const searchResults = [
-    { id: '1', title: 'Firework', artist: 'Katy Perry', cover: 'https://picsum.photos/200/200?random=20' },
-    { id: '2', title: 'Firework - Accoustic', artist: 'The Waynes', cover: 'https://picsum.photos/200/200?random=21' },
-    { id: '3', title: 'Last Friday Night', artist: 'Katy Perry', cover: 'https://picsum.photos/200/200?random=22' },
-    { id: '4', title: 'Firework Cover', artist: 'The Sappeor', cover: 'https://picsum.photos/200/200?random=23' },
-    { id: '5', title: 'Teenage Dream', artist: 'Katy Perry', cover: 'https://picsum.photos/200/200?random=24' },
-    { id: '6', title: 'Roar', artist: 'Katy Perry', cover: 'https://picsum.photos/200/200?random=25' },
-    { id: '7', title: 'Fireworks', artist: 'Sleep on it', cover: 'https://picsum.photos/200/200?random=26' },
-    { id: '8', title: 'Fireworks at Dawn', artist: 'Sleep on it', cover: 'https://picsum.photos/200/200?random=27' },
-  ];
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 500);
 
-  const filters = ['Songs', 'Artists', 'Albums', 'Folders'];
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data: songsData, isLoading: songsLoading } = useSearchSongs(
+    { query: debouncedQuery, page: 0, limit: 20 },
+    { enabled: activeFilter === 'Songs' && debouncedQuery.length > 0 }
+  );
+
+  const { data: albumsData, isLoading: albumsLoading } = useSearchAlbums(
+    { query: debouncedQuery, page: 0, limit: 20 },
+    { enabled: activeFilter === 'Albums' && debouncedQuery.length > 0 }
+  );
+
+  const { data: artistsData, isLoading: artistsLoading } = useSearchArtists(
+    { query: debouncedQuery, page: 0, limit: 20 },
+    { enabled: activeFilter === 'Artists' && debouncedQuery.length > 0 }
+  );
+
+  const { data: playlistsData, isLoading: playlistsLoading } = useSearchPlaylists(
+    { query: debouncedQuery, page: 0, limit: 20 },
+    { enabled: activeFilter === 'Playlists' && debouncedQuery.length > 0 }
+  );
+
+  useEffect(() => {
+    if (debouncedQuery.trim() === '') {
+      setSearchState('default');
+      return;
+    }
+
+    const isLoading = songsLoading || albumsLoading || artistsLoading || playlistsLoading;
+    
+    if (isLoading) {
+      setSearchState('searching');
+      return;
+    }
+
+    let hasResults = false;
+    switch (activeFilter) {
+      case 'Songs':
+        hasResults = (songsData?.data?.results?.length || 0) > 0;
+        break;
+      case 'Albums':
+        hasResults = (albumsData?.data?.results?.length || 0) > 0;
+        break;
+      case 'Artists':
+        hasResults = (artistsData?.data?.results?.length || 0) > 0;
+        break;
+      case 'Playlists':
+        hasResults = (playlistsData?.data?.results?.length || 0) > 0;
+        break;
+    }
+
+    const newState = hasResults ? 'results' : 'notfound';
+    setSearchState(newState);
+    
+    // Add to recent searches when we get results
+    if (hasResults && debouncedQuery.trim()) {
+      dispatch(addRecentSearch(debouncedQuery.trim()));
+    }
+  }, [debouncedQuery, songsData, albumsData, artistsData, playlistsData, activeFilter, songsLoading, albumsLoading, artistsLoading, playlistsLoading, dispatch]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    
-    if (text.trim() === '') {
-      setSearchState('default');
-    } else {
-      // Simulate search - if query is "Abcdefghijklm", show not found
-      if (text.toLowerCase() === 'abcdefghijklm') {
-        setSearchState('notfound');
-      } else {
-        setSearchState('results');
-      }
-    }
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
+    setDebouncedQuery('');
     setSearchState('default');
   };
 
   const handleRecentSearchPress = (search: string) => {
     setSearchQuery(search);
-    handleSearch(search);
   };
 
   const handleRemoveRecentSearch = (search: string) => {
-    setRecentSearches(recentSearches.filter(item => item !== search));
+    dispatch(removeRecentSearch(search));
   };
 
   const handleClearAllRecent = () => {
-    setRecentSearches([]);
+    dispatch(clearAllRecentSearches());
   };
-
-  const handlePlaySong = (song: typeof searchResults[0]) => {
-    navigation.navigate('Player', {
-      songId: song.id,
-      title: song.title,
-      artist: song.artist,
-      coverUrl: song.cover,
-    });
-  };
-
-  const renderRecentSearchItem = ({ item }: { item: string }) => (
-    <View style={styles.recentSearchItem}>
-      <TouchableOpacity
-        style={styles.recentSearchContent}
-        onPress={() => handleRecentSearchPress(item)}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.recentSearchText, { color: colors.text }]}>{item}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => handleRemoveRecentSearch(item)}
-        style={styles.removeButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="close" size={20} color={colors.textSecondary} />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderSearchResultItem = ({ item }: { item: typeof searchResults[0] }) => (
-    <TouchableOpacity
-      style={styles.resultItem}
-      onPress={() => handlePlaySong(item)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: item.cover }} style={styles.resultCover} />
-      <View style={styles.resultInfo}>
-        <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={[styles.resultArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-          {item.artist}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.resultPlayButton}>
-        <Ionicons name="play-circle" size={32} color={colors.primary} />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.resultMoreButton}>
-        <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
 
   const renderDefaultState = () => (
     <View style={styles.defaultContainer}>
-      {/* Recent Searches Header */}
       <View style={styles.recentHeader}>
         <Text style={[styles.recentTitle, { color: colors.text }]}>Recent Searches</Text>
-        <TouchableOpacity onPress={handleClearAllRecent}>
-          <Text style={[styles.clearAllText, { color: colors.primary }]}>Clear All</Text>
-        </TouchableOpacity>
+        {recentSearches.length > 0 && (
+          <TouchableOpacity onPress={handleClearAllRecent}>
+            <Text style={[styles.clearAllText, { color: colors.primary }]}>Clear All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Recent Searches List */}
       {recentSearches.length > 0 ? (
         <FlatList
           data={recentSearches}
@@ -168,7 +161,6 @@ const SearchScreen = () => {
 
   const renderNotFoundState = () => (
     <View style={styles.notFoundContainer}>
-      {/* Filter Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -199,7 +191,6 @@ const SearchScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Not Found Illustration */}
       <View style={styles.notFoundContent}>
         <View style={styles.illustrationContainer}>
           <View style={[styles.sadFace, { backgroundColor: colors.primary }]}>
@@ -221,47 +212,207 @@ const SearchScreen = () => {
     </View>
   );
 
-  const renderResultsState = () => (
-    <View style={styles.resultsContainer}>
-      {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
+  const renderRecentSearchItem = ({ item }: { item: string }) => (
+    <View style={styles.recentSearchItem}>
+      <TouchableOpacity
+        style={styles.recentSearchContent}
+        onPress={() => handleRecentSearchPress(item)}
+        activeOpacity={0.7}
       >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterTab,
-              activeFilter === filter
-                ? { backgroundColor: colors.primary }
-                : { backgroundColor: 'transparent', borderColor: colors.primary, borderWidth: 1 },
-            ]}
-            onPress={() => setActiveFilter(filter)}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                { color: activeFilter === filter ? '#FFFFFF' : colors.primary },
-              ]}
-            >
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        <Text style={[styles.recentSearchText, { color: colors.text }]}>{item}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => handleRemoveRecentSearch(item)}
+        style={styles.removeButton}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="close" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+    </View>
+  );
 
-      {/* Results List */}
-      <FlatList
-        data={searchResults}
-        renderItem={renderSearchResultItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.resultsContent}
-      />
+  const renderSongItem = ({ item }: { item: any }) => {
+    const coverUrl = getSongImage(item, '150x150');
+
+    return (
+      <TouchableOpacity
+        style={styles.resultItem}
+        onPress={() => playSong(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: coverUrl }} style={styles.resultCover} />
+        <View style={styles.resultInfo}>
+          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.resultArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.artists?.primary?.[0]?.name || 'Unknown Artist'}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.resultPlayButton} onPress={() => playSong(item)}>
+          <Ionicons name="play-circle" size={32} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.resultMoreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderAlbumItem = ({ item }: { item: any }) => {
+    const coverUrl = getAlbumImage(item, '150x150');
+
+    return (
+      <TouchableOpacity
+        style={styles.resultItem}
+        onPress={() => openAlbumDetails(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: coverUrl }} style={styles.resultCover} />
+        <View style={styles.resultInfo}>
+          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.resultArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.artists?.primary?.[0]?.name || 'Unknown Artist'}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.resultMoreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderArtistItem = ({ item }: { item: any }) => {
+    const imageUrl = getArtistImage(item, '150x150');
+
+    return (
+      <TouchableOpacity
+        style={styles.resultItem}
+        onPress={() => openArtistDetails(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: imageUrl }} style={[styles.resultCover, { borderRadius: 30 }]} />
+        <View style={styles.resultInfo}>
+          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.resultArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+            Artist
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.resultMoreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderPlaylistItem = ({ item }: { item: any }) => {
+    const coverUrl = item.image?.find((img: any) => img.quality === '150x150')?.url ||
+                     item.image?.[0]?.url ||
+                     'https://picsum.photos/200/200';
+
+    return (
+      <TouchableOpacity
+        style={styles.resultItem}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: coverUrl }} style={styles.resultCover} />
+        <View style={styles.resultInfo}>
+          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.resultArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+            Playlist
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.resultMoreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderResultsState = () => {
+    let data: any[] = [];
+    let renderItem: any;
+
+    switch (activeFilter) {
+      case 'Songs':
+        data = songsData?.data?.results || [];
+        renderItem = renderSongItem;
+        console.log('Songs Data:', data[0]);
+        break;
+      case 'Albums':
+        data = albumsData?.data?.results || [];
+        renderItem = renderAlbumItem;
+        break;
+      case 'Artists':
+        data = artistsData?.data?.results || [];
+        renderItem = renderArtistItem;
+        break;
+      case 'Playlists':
+        data = playlistsData?.data?.results || [];
+        renderItem = renderPlaylistItem;
+        break;
+    }
+
+    return (
+      <View style={styles.resultsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterContainer}
+          contentContainerStyle={styles.filterContent}
+        >
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.filterTab,
+                activeFilter === filter
+                  ? { backgroundColor: colors.primary }
+                  : { backgroundColor: 'transparent', borderColor: colors.primary, borderWidth: 1 },
+              ]}
+              onPress={() => setActiveFilter(filter)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: activeFilter === filter ? '#FFFFFF' : colors.primary },
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <FlatList
+          data={data}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.resultsContent}
+          ListEmptyComponent={
+            <View style={styles.emptyResults}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No {activeFilter.toLowerCase()} found
+              </Text>
+            </View>
+          }
+        />
+      </View>
+    );
+  };
+
+  const renderSearchingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Searching...</Text>
     </View>
   );
 
@@ -272,9 +423,8 @@ const SearchScreen = () => {
         backgroundColor={colors.background}
       />
 
-      {/* Header with Search Bar */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.pop()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
@@ -283,7 +433,6 @@ const SearchScreen = () => {
             styles.searchContainer,
             {
               backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5',
-
               borderColor: searchState === 'default' && searchQuery === '' ? colors.primary : 'transparent',
               borderWidth: searchState === 'default' && searchQuery === '' ? 1 : 0,
             },
@@ -292,7 +441,7 @@ const SearchScreen = () => {
           <Ionicons name="search" size={20} color={colors.primary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Abcdefghijklm"
+            placeholder="Search for songs, artists..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={handleSearch}
@@ -306,10 +455,12 @@ const SearchScreen = () => {
         </View>
       </View>
 
-      {/* Render based on state */}
       {searchState === 'default' && renderDefaultState()}
+      {searchState === 'searching' && renderSearchingState()}
       {searchState === 'notfound' && renderNotFoundState()}
       {searchState === 'results' && renderResultsState()}
+      
+      <MiniPlayer />
     </View>
   );
 };
@@ -364,7 +515,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical:12,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(128, 128, 128, 0.2)',
   },
@@ -497,6 +648,25 @@ const styles = StyleSheet.create({
   },
   resultMoreButton: {
     padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 8,
+  },
+  emptyResults: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
   },
 });
 

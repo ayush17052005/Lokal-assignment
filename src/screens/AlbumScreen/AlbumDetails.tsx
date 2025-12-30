@@ -17,32 +17,35 @@ import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-interface ArtistDetailsProps {
+interface AlbumDetailsProps {
   route: {
     params: {
-      artistId: string;
+      albumId: string;
       name: string;
-      albums: number;
+      artist: string;
+      year: string;
       songs: number;
       imageUrl: string;
     };
   };
 }
 
-const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
+const AlbumDetails: React.FC<AlbumDetailsProps> = ({ route }) => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { artistId, name, albums, songs, imageUrl } = route.params;
+  const { albumId, name, artist, year, songs, imageUrl } = route.params;
   const [isShuffleActive, setIsShuffleActive] = useState(false);
 
-  // Sample songs data - replace with real data
-  const artistSongs = [
-    { id: '1', title: 'Bang Bang', artist: name, cover: 'https://picsum.photos/200/200?random=11' },
-    { id: '2', title: 'The Light Is Coming', artist: name, cover: 'https://picsum.photos/200/200?random=12' },
-    { id: '3', title: 'Dangerous Woman', artist: name, cover: 'https://picsum.photos/200/200?random=13' },
+  // Sample songs data - replace with real data from API
+  const albumSongs = [
+    { id: '1', title: 'Track 1', artist: artist, cover: imageUrl, duration: '3:45' },
+    { id: '2', title: 'Track 2', artist: artist, cover: imageUrl, duration: '4:12' },
+    { id: '3', title: 'Track 3', artist: artist, cover: imageUrl, duration: '3:28' },
+    { id: '4', title: 'Track 4', artist: artist, cover: imageUrl, duration: '5:01' },
+    { id: '5', title: 'Track 5', artist: artist, cover: imageUrl, duration: '3:56' },
   ];
 
-  const handlePlaySong = (song: typeof artistSongs[0]) => {
+  const handlePlaySong = (song: typeof albumSongs[0]) => {
     // TODO: Implement player
     console.log('Play song:', song.title);
   };
@@ -54,18 +57,20 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
 
   const handlePlayAll = () => {
     // Play all songs
-    if (artistSongs.length > 0) {
-      handlePlaySong(artistSongs[0]);
+    if (albumSongs.length > 0) {
+      handlePlaySong(albumSongs[0]);
     }
   };
 
-  const renderSongItem = ({ item }: { item: typeof artistSongs[0] }) => (
+  const renderSongItem = ({ item, index }: { item: typeof albumSongs[0]; index: number }) => (
     <TouchableOpacity
       style={styles.songItem}
       onPress={() => handlePlaySong(item)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: item.cover }} style={styles.songCover} />
+      <Text style={[styles.trackNumber, { color: colors.textSecondary }]}>
+        {(index + 1).toString().padStart(2, '0')}
+      </Text>
       <View style={styles.songInfo}>
         <Text style={[styles.songTitle, { color: colors.text }]} numberOfLines={1}>
           {item.title}
@@ -74,9 +79,9 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
           {item.artist}
         </Text>
       </View>
-      <TouchableOpacity style={styles.songPlayButton}>
-        <Ionicons name="play-circle" size={32} color={colors.primary} />
-      </TouchableOpacity>
+      <Text style={[styles.songDuration, { color: colors.textSecondary }]}>
+        {item.duration}
+      </Text>
       <TouchableOpacity style={styles.songMoreButton}>
         <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
@@ -104,12 +109,13 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Artist Cover & Info */}
-        <View style={styles.artistSection}>
-          <Image source={{ uri: imageUrl }} style={styles.artistCover} />
-          <Text style={[styles.artistName, { color: colors.text }]}>{name}</Text>
-          <Text style={[styles.artistMeta, { color: colors.textSecondary }]}>
-            {albums} Album  |  {songs} Songs  |  01:25:43 mins
+        {/* Album Cover & Info */}
+        <View style={styles.albumSection}>
+          <Image source={{ uri: imageUrl }} style={styles.albumCover} />
+          <Text style={[styles.albumName, { color: colors.text }]}>{name}</Text>
+          <Text style={[styles.albumArtist, { color: colors.textSecondary }]}>{artist}</Text>
+          <Text style={[styles.albumMeta, { color: colors.textSecondary }]}>
+            {year}  |  {songs} Songs
           </Text>
         </View>
 
@@ -140,14 +146,11 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
         {/* Songs Section */}
         <View style={styles.songsSection}>
           <View style={styles.songsSectionHeader}>
-            <Text style={[styles.songsTitle, { color: colors.text }]}>Songs</Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
-            </TouchableOpacity>
+            <Text style={[styles.songsTitle, { color: colors.text }]}>Tracks</Text>
           </View>
 
           <FlatList
-            data={artistSongs}
+            data={albumSongs}
             renderItem={renderSongItem}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
@@ -181,23 +184,29 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     padding: 8,
   },
-  artistSection: {
+  albumSection: {
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-  artistCover: {
+  albumCover: {
     width: 280,
     height: 280,
     borderRadius: 24,
     marginBottom: 20,
   },
-  artistName: {
+  albumName: {
     fontSize: 28,
     fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  albumArtist: {
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 8,
   },
-  artistMeta: {
+  albumMeta: {
     fontSize: 14,
   },
   actionButtons: {
@@ -248,23 +257,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   songItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
-  songCover: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+  trackNumber: {
+    width: 40,
+    fontSize: 16,
+    fontWeight: '600',
   },
   songInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
   },
   songTitle: {
     fontSize: 16,
@@ -274,12 +279,13 @@ const styles = StyleSheet.create({
   songArtist: {
     fontSize: 14,
   },
-  songPlayButton: {
-    marginRight: 8,
+  songDuration: {
+    fontSize: 14,
+    marginRight: 12,
   },
   songMoreButton: {
     padding: 8,
   },
 });
 
-export default ArtistDetails;
+export default AlbumDetails;

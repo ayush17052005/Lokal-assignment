@@ -3,15 +3,19 @@ export type RootStackParamList = {
   Details: { itemId: string };
   Player: {
     songId: string;
-    title: string;
-    artist: string;
-    coverUrl: string;
-    duration?: string;
   };
   ArtistDetails: {
     artistId: string;
     name: string;
     albums: number;
+    songs: number;
+    imageUrl: string;
+  };
+  AlbumDetails: {
+    albumId: string;
+    name: string;
+    artist: string;
+    year: string;
     songs: number;
     imageUrl: string;
   };

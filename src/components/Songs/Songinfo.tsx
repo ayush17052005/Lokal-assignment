@@ -17,16 +17,44 @@ interface SongInfoProps {
   onClose: () => void;
   song: {
     id: string;
-    title: string;
-    artist: string;
-    duration: string;
-    cover: string;
+    name?: string;
+    title?: string;
+    artist?: string;
+    artists?: {
+      primary?: Array<{ name: string }>;
+    };
+    primaryArtists?: string;
+    duration?: number | string;
+    cover?: string;
+    image?: Array<{ quality: string; url: string }>;
   };
 }
 
 const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Helper functions to get song details
+  const getSongTitle = () => song.name || song.title || 'Unknown';
+  const getArtistName = () => {
+    if (song.artist) return song.artist;
+    return song.artists?.primary?.[0]?.name || song.primaryArtists || 'Unknown Artist';
+  };
+  const getCoverUrl = () => {
+    if (song.cover) return song.cover;
+    return song.image?.find((img) => img.quality === '500x500')?.url ||
+           song.image?.[0]?.url ||
+           'https://picsum.photos/200/200';
+  };
+  const getDuration = () => {
+    if (typeof song.duration === 'string') return song.duration;
+    if (typeof song.duration === 'number') {
+      const mins = Math.floor(song.duration / 60);
+      const secs = song.duration % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return '00:00';
+  };
 
   const menuOptions = [
     { id: 'play-next', icon: 'play-forward-outline', label: 'Play Next' },
@@ -74,13 +102,13 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
 
         {/* Song Header */}
         <View style={styles.songHeader}>
-          <Image source={{ uri: song.cover }} style={styles.coverImage} />
+          <Image source={{ uri: getCoverUrl() }} style={styles.coverImage} />
           <View style={styles.songDetails}>
             <Text style={[styles.songTitle, { color: colors.text }]} numberOfLines={1}>
-              {song.title}
+              {getSongTitle()}
             </Text>
             <Text style={[styles.songMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-              {song.artist} | {song.duration} mins
+              {getArtistName()} | {getDuration()} mins
             </Text>
           </View>
           <TouchableOpacity style={styles.favoriteButton}>

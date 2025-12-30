@@ -2,15 +2,16 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import ArtistInfo from '../../../components/Artists/ArtistInfo';
 import { useTheme } from '../../../context/ThemeContext';
+import { useSongActions } from '../../../hooks';
 import { RootStackParamList } from '../../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -18,6 +19,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const SuggestionScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { playSong } = useSongActions();
   const [selectedArtist, setSelectedArtist] = useState<typeof artists[0] | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -40,12 +42,14 @@ const SuggestionScreen = () => {
   ];
 
   const handlePlaySong = (song: typeof recentlyPlayed[0]) => {
-    navigation.navigate('Player', {
-      songId: song.id,
-      title: song.title,
-      artist: song.artist,
-      coverUrl: song.cover,
-      duration: song.duration,
+    // Convert to format expected by playSong
+    playSong({
+      id: song.id,
+      name: song.title,
+      duration: song.duration, // This might need parsing if it's "MM:SS"
+      downloadUrl: [{ quality: '320kbps', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' }], // Dummy URL for testing
+      image: [{ quality: '500x500', url: song.cover }],
+      artists: { primary: [{ name: song.artist }] }
     });
   };
 
