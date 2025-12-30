@@ -1,20 +1,55 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as NavigationBar from 'expo-navigation-bar';
+import { useEffect } from 'react';
+import { StyleSheet, useColorScheme } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { ThemeProvider } from './src/context/ThemeContext';
+import AppNavigator from './src/navigation/AppNavigator';
+import { store } from './src/store/store';
+
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 export default function App() {
+  const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Set Android navigation bar color based on theme
+    if (colorScheme === 'dark') {
+      NavigationBar.setBackgroundColorAsync('#1A1A1A');
+      NavigationBar.setButtonStyleAsync('light');
+    } else {
+      NavigationBar.setBackgroundColorAsync('#FFFFFF');
+      NavigationBar.setButtonStyleAsync('dark');
+    }
+  }, [colorScheme]);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <SafeAreaView style={styles.container} edges={['top','bottom']}>
+              <AppNavigator />
+            </SafeAreaView>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </Provider>
+    </QueryClientProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
