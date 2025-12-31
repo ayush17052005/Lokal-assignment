@@ -89,10 +89,7 @@ const ArtistScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={[styles.count, { color: colors.text }]}>{artists.length} artists</Text>
-        <TouchableOpacity style={styles.sortButton}>
-          <Text style={[styles.sortText, { color: colors.primary }]}>Trending</Text>
-          <Ionicons name="swap-vertical" size={16} color={colors.primary} />
-        </TouchableOpacity>
+        
       </View>
       <FlatList
         data={artists}

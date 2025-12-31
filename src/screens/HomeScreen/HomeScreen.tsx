@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
+import SettingsModal from '../../components/Settings/SettingsModal';
 import { useTheme } from '../../context/ThemeContext';
 import { RootStackParamList } from '../../types/navigation';
 import FavoritesScreen from '../FavoriteScreen/FavoritesScreen';
@@ -27,13 +28,14 @@ const HomeScreen = ({ navigation }: Props) => {
   const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('Suggested');
   const [activeBottomTab, setActiveBottomTab] = useState<'Home' | 'Playlists' | 'Favorites'>('Home');
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
 
   const tabs: TabType[] = ['Suggested', 'Songs', 'Artists', 'Albums'];
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Suggested':
-        return <SuggestionScreen />;
+        return <SuggestionScreen onSwitchTab={setActiveTab} />;
       case 'Songs':
         return <SongsScreen />;
       case 'Artists':
@@ -41,7 +43,7 @@ const HomeScreen = ({ navigation }: Props) => {
       case 'Albums':
         return <AlbumsScreen />;
       default:
-        return <SuggestionScreen />;
+        return <SuggestionScreen onSwitchTab={setActiveTab} />;
     }
   };
 
@@ -103,15 +105,23 @@ const HomeScreen = ({ navigation }: Props) => {
           <Ionicons name="musical-notes" size={32} color={colors.primary} />
           <Text style={[styles.logo, { color: colors.text }]}>Mume</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-          <Ionicons name="search-outline" size={28} color={colors.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.headerIcon}>
+            <Ionicons name="search-outline" size={28} color={colors.text} />
+          </TouchableOpacity>
+         
+        </View>
       </View>
 
       {renderContent()}
 
       {/* Mini Player */}
       <MiniPlayer />
+
+      <SettingsModal 
+        isVisible={isSettingsVisible} 
+        onClose={() => setIsSettingsVisible(false)} 
+      />
 
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
@@ -148,7 +158,10 @@ const HomeScreen = ({ navigation }: Props) => {
           />
           <Text style={[styles.navText, { color: activeBottomTab === 'Playlists' ? colors.primary : colors.textSecondary }]}>Playlists</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => setIsSettingsVisible(true)}
+        >
           <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
           <Text style={[styles.navText, { color: colors.textSecondary }]}>Settings</Text>
         </TouchableOpacity>
@@ -173,12 +186,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  headerIcon: {
+    // padding: 4,
+  },
   logo: {
     fontSize: 24,
     fontWeight: 'bold',
   },
   tabsContainer: {
-    paddingVertical: 12,
+    paddingVertical: 6,
   },
   tab: {
     paddingHorizontal: 20,

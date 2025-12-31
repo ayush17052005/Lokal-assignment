@@ -145,10 +145,29 @@ const playerSlice = createSlice({
         state.queue.splice(indexToRemove, 1);
         state.originalQueue.splice(indexToRemove, 1);
         state.currentIndex -= 1; // Adjust current index
+      } else {
+        // Removing current track
+        state.queue.splice(indexToRemove, 1);
+        state.originalQueue.splice(indexToRemove, 1);
+        // If there are more tracks, play the next one (which is now at the same index)
+        if (state.queue.length > state.currentIndex) {
+            state.currentTrack = state.queue[state.currentIndex];
+            state.position = 0;
+            state.duration = state.queue[state.currentIndex].duration || 0;
+        } else if (state.queue.length > 0) {
+            // If we removed the last track, go to the previous one
+            state.currentIndex = state.queue.length - 1;
+            state.currentTrack = state.queue[state.currentIndex];
+            state.position = 0;
+            state.duration = state.queue[state.currentIndex].duration || 0;
+        } else {
+            // Queue is empty
+            state.currentTrack = null;
+            state.isPlaying = false;
+            state.position = 0;
+            state.duration = 0;
+        }
       }
-      // If removing current track, play next? Or stop?
-      // Usually queue management allows removing upcoming tracks.
-      // If removing current, maybe skip to next.
     },
     reorderQueue: (state, action: PayloadAction<{ from: number; to: number }>) => {
       const { from, to } = action.payload;

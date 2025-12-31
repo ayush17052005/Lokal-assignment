@@ -32,7 +32,7 @@ apiClient.interceptors.response.use(
     // Handle errors globally
     if (error.response) {
       // Server responded with error status
-      console.error('API Error:', error.response.data);
+      console.error('API Error:',error, error.response.data);
     } else if (error.request) {
       // Request was made but no response
       console.error('Network Error:', error.message);

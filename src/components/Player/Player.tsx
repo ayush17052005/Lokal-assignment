@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Modal from 'react-native-modal';
 import { useTheme } from '../../context/ThemeContext';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
@@ -221,12 +222,15 @@ const Player = ({ route, navigation }: Props) => {
         isVisible={isQueueVisible}
         onBackdropPress={() => setQueueVisible(false)}
         onSwipeComplete={() => setQueueVisible(false)}
-        swipeDirection="down"
+        swipeDirection={['down']}
         style={{ margin: 0, justifyContent: 'flex-end' }}
+        propagateSwipe={true}
       >
-        <View style={{ height: '70%', backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+        <GestureHandlerRootView style={{ height: '70%', backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
           <View style={{ alignItems: 'center', padding: 10 }}>
-            <View style={{ width: 40, height: 5, backgroundColor: '#ccc', borderRadius: 2.5 }} />
+            <TouchableOpacity onPress={() => setQueueVisible(false)} style={{ width: '100%', alignItems: 'center' }}>
+                <View style={{ width: 40, height: 5, backgroundColor: '#ccc', borderRadius: 2.5 }} />
+            </TouchableOpacity>
             <Text style={{ color: colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 10 }}>Queue</Text>
           </View>
           <QueueList
@@ -239,7 +243,7 @@ const Player = ({ route, navigation }: Props) => {
               playTrackAtIndex(index);
             }}
           />
-        </View>
+        </GestureHandlerRootView>
       </Modal>
     </View>
   );

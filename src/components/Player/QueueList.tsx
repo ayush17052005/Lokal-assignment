@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { Track } from '../../store/slices/playerSlice';
 
@@ -24,7 +25,6 @@ const QueueList: React.FC<QueueListProps> = ({ queue, currentTrack, currentIndex
     return (
       <ScaleDecorator>
         <TouchableOpacity
-          onLongPress={drag}
           disabled={isActive}
           style={[
             styles.itemContainer,
@@ -52,7 +52,9 @@ const QueueList: React.FC<QueueListProps> = ({ queue, currentTrack, currentIndex
              <Ionicons name="musical-notes" size={20} color={colors.primary} style={{ marginRight: 10 }} />
           )}
 
-          <TouchableOpacity onPress={() => onRemove(index || 0)} style={styles.removeButton}>
+          <TouchableOpacity onPress={() => {
+              if (index !== undefined) onRemove(index);
+          }} style={styles.removeButton}>
             <Ionicons name="close" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </TouchableOpacity>
@@ -67,6 +69,7 @@ const QueueList: React.FC<QueueListProps> = ({ queue, currentTrack, currentIndex
       keyExtractor={(item, index) => `queue-${item.id}-${index}`}
       renderItem={renderItem}
       contentContainerStyle={{ paddingBottom: 20 }}
+      containerStyle={{ flex: 1 }}
     />
   );
 };

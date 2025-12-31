@@ -18,7 +18,11 @@ import { RootStackParamList } from '../../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const SuggestionScreen = () => {
+interface SuggestionScreenProps {
+  onSwitchTab: (tab: 'Suggested' | 'Songs' | 'Artists' | 'Albums') => void;
+}
+
+const SuggestionScreen: React.FC<SuggestionScreenProps> = ({ onSwitchTab }) => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { playSong, getImageUrl, getArtistName } = useSongActions();
@@ -105,49 +109,7 @@ const SuggestionScreen = () => {
       style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Recently Played */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Recently Played
-          </Text>
-          {recentlyPlayed.length > 0 && (
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        {recentlyPlayed.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {recentlyPlayed.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.songCard, index === 0 && styles.firstCard]}
-                onPress={() => handlePlaySong(item)}
-              >
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.songCover}
-                />
-                <Text
-                  style={[styles.songTitle, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[styles.songArtist, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {item.subtitle}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : (
-          renderEmptyState('Play some music to see your history')
-        )}
-      </View>
+      
 
       {/* More from Artist */}
       {lastArtistId && (
@@ -242,6 +204,7 @@ const SuggestionScreen = () => {
           {artists.length > 0 && (
             <TouchableOpacity
                 activeOpacity={0.7}
+                onPress={() => onSwitchTab('Artists')}
               >
               <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
             </TouchableOpacity>
@@ -279,11 +242,6 @@ const SuggestionScreen = () => {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Most Played
           </Text>
-          {mostPlayed.length > 0 && (
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
-            </TouchableOpacity>
-          )}
         </View>
         {mostPlayed.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -314,6 +272,45 @@ const SuggestionScreen = () => {
           </ScrollView>
         ) : (
           renderEmptyState('Your most played tracks will appear here')
+        )}
+      </View>
+
+      {/* Recently Played */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Recently Played
+          </Text>
+        </View>
+        {recentlyPlayed.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {recentlyPlayed.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.songCard, index === 0 && styles.firstCard]}
+                onPress={() => handlePlaySong(item)}
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.songCover}
+                />
+                <Text
+                  style={[styles.songTitle, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.songArtist, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          renderEmptyState('Play some music to see your history')
         )}
       </View>
     </ScrollView>

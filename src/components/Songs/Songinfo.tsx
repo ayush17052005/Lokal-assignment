@@ -108,11 +108,7 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
     { id: 'add-playlist', icon: 'add-circle-outline', label: 'Add to Playlist' },
     { id: 'go-album', icon: 'disc-outline', label: 'Go to Album' },
     { id: 'go-artist', icon: 'person-outline', label: 'Go to Artist' },
-    { id: 'details', icon: 'information-circle-outline', label: 'Details' },
-    { id: 'ringtone', icon: 'call-outline', label: 'Set as Ringtone' },
-    { id: 'blacklist', icon: 'close-circle-outline', label: 'Add to Blacklist' },
-    { id: 'share', icon: 'share-outline', label: 'Share' },
-    { id: 'delete', icon: 'trash-outline', label: 'Delete from Device' },
+    
   ];
 
   const handleOptionPress = (optionId: string) => {
