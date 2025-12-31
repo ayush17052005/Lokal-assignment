@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect } from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -42,9 +43,11 @@ export default function App() {
           <ThemeProvider>
             <AudioPlayerProvider>
               <SafeAreaProvider>
-                <SafeAreaView style={styles.container} edges={['top','bottom']}>
-                  <AppNavigator />
-                </SafeAreaView>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <SafeAreaView style={styles.container} edges={['top','bottom']}>
+                    <AppNavigator />
+                  </SafeAreaView>
+                </GestureHandlerRootView>
               </SafeAreaProvider>
             </AudioPlayerProvider>
           </ThemeProvider>

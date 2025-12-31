@@ -1,6 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { configureStore } from '@reduxjs/toolkit';
-import { persistReducer, persistStore } from 'redux-persist';
+import {
+  FLUSH,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+  REHYDRATE,
+  persistReducer,
+  persistStore,
+} from 'redux-persist';
 import counterReducer from './slices/counterSlice';
 import libraryReducer from './slices/librarySlice';
 import playerReducer from './slices/playerSlice';
@@ -16,7 +25,7 @@ const recentSearchesPersistConfig = {
 const libraryPersistConfig = {
   key: 'library',
   storage: AsyncStorage,
-  whitelist: ['history', 'stats'],
+  whitelist: ['history', 'stats', 'likedSongs'],
 };
 
 const persistedRecentSearchesReducer = persistReducer(
@@ -39,7 +48,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
 });

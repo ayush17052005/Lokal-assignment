@@ -3,18 +3,22 @@ import React, { createContext, useCallback, useContext, useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToHistory } from '../store/slices/librarySlice';
 import {
-    addToQueue,
-    playNextInQueue,
-    playNextTrack,
-    playPreviousTrack,
-    playTrackAtIndex,
-    setDuration,
-    setIsLoading,
-    setIsPlaying,
-    setPosition,
-    setQueue,
-    toggleShuffle,
-    Track
+  addToQueue,
+  playAlbumWithHistory,
+  playIndependentTrack,
+  playNextInQueue,
+  playNextTrack,
+  playPreviousTrack,
+  playTrackAtIndex,
+  removeTrackFromQueue,
+  reorderQueue as reorderQueueAction,
+  setDuration,
+  setIsLoading,
+  setIsPlaying,
+  setPosition,
+  setQueue,
+  toggleShuffle,
+  Track
 } from '../store/slices/playerSlice';
 
 interface AudioPlayerContextType {
@@ -30,6 +34,10 @@ interface AudioPlayerContextType {
   playAlbum: (tracks: Track[], startIndex?: number) => Promise<void>;
   addTrackToQueue: (track: Track) => void;
   playTrackNext: (track: Track) => void;
+  playIndependent: (track: Track) => void;
+  playTrackAtIndex: (index: number) => void;
+  reorderQueue: (from: number, to: number) => void;
+  removeFromQueue: (index: number) => void;
   shuffleQueue: () => void;
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -38,6 +46,7 @@ interface AudioPlayerContextType {
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
   queue: Track[];
+  currentIndex: number;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -125,10 +134,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   );
 
   const playAlbum = useCallback(async (tracks: Track[], startIndex = 0) => {
-      dispatch(setQueue(tracks));
-      if (startIndex > 0) {
-          dispatch(playTrackAtIndex(startIndex));
-      }
+      dispatch(playAlbumWithHistory({ tracks, startIndex }));
   }, [dispatch]);
 
   const addTrackToQueue = useCallback((track: Track) => {
@@ -139,8 +145,24 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       dispatch(playNextInQueue(track));
   }, [dispatch]);
   
+  const playIndependent = useCallback((track: Track) => {
+    dispatch(playIndependentTrack(track));
+  }, [dispatch]);
+
+  const playAtIndex = useCallback((index: number) => {
+    dispatch(playTrackAtIndex(index));
+  }, [dispatch]);
+
+  const reorderQueue = useCallback((from: number, to: number) => {
+    dispatch(reorderQueueAction({ from, to }));
+  }, [dispatch]);
+
+  const removeFromQueue = useCallback((index: number) => {
+    dispatch(removeTrackFromQueue(index));
+  }, [dispatch]);
+
   const shuffleQueue = useCallback(() => {
-      dispatch(toggleShuffle());
+    dispatch(toggleShuffle());
   }, [dispatch]);
 
   const play = useCallback(async () => {
@@ -237,6 +259,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     playAlbum,
     addTrackToQueue,
     playTrackNext,
+    playIndependent,
+    playTrackAtIndex: playAtIndex,
+    reorderQueue,
+    removeFromQueue,
     shuffleQueue,
     currentTrack,
     isPlaying: status.playing || false,
@@ -244,7 +270,8 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     duration: status.duration || 0,
     shuffle,
     repeat,
-    queue
+    queue,
+    currentIndex
   };
 
   return (

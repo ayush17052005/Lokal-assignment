@@ -12,6 +12,7 @@ import {
 import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
 import { useTheme } from '../../context/ThemeContext';
 import { RootStackParamList } from '../../types/navigation';
+import FavoritesScreen from '../FavoriteScreen/FavoritesScreen';
 import PlaylistsScreen from '../PlaylistScreen/PlaylistsScreen';
 import AlbumsScreen from './TabsScreen/AlbumsScreen';
 import ArtistScreen from './TabsScreen/ArtistScreen';
@@ -25,7 +26,7 @@ type TabType = 'Suggested' | 'Songs' | 'Artists' | 'Albums';
 const HomeScreen = ({ navigation }: Props) => {
   const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('Suggested');
-  const [activeBottomTab, setActiveBottomTab] = useState<'Home' | 'Playlists'>('Home');
+  const [activeBottomTab, setActiveBottomTab] = useState<'Home' | 'Playlists' | 'Favorites'>('Home');
 
   const tabs: TabType[] = ['Suggested', 'Songs', 'Artists', 'Albums'];
 
@@ -47,6 +48,9 @@ const HomeScreen = ({ navigation }: Props) => {
   const renderContent = () => {
     if (activeBottomTab === 'Playlists') {
       return <PlaylistsScreen />;
+    }
+    if (activeBottomTab === 'Favorites') {
+      return <FavoritesScreen />;
     }
 
     return (
@@ -122,9 +126,16 @@ const HomeScreen = ({ navigation }: Props) => {
           />
           <Text style={[styles.navText, { color: activeBottomTab === 'Home' ? colors.primary : colors.textSecondary }]}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="heart-outline" size={24} color={colors.textSecondary} />
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Favorites</Text>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => setActiveBottomTab('Favorites')}
+        >
+          <Ionicons 
+            name={activeBottomTab === 'Favorites' ? "heart" : "heart-outline"} 
+            size={24} 
+            color={activeBottomTab === 'Favorites' ? colors.primary : colors.textSecondary} 
+          />
+          <Text style={[styles.navText, { color: activeBottomTab === 'Favorites' ? colors.primary : colors.textSecondary }]}>Favorites</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}

@@ -102,6 +102,75 @@ const playerSlice = createSlice({
         state.duration = state.queue[state.currentIndex].duration || 0;
       }
     },
+    playIndependentTrack: (state, action: PayloadAction<Track>) => {
+      // Keep history (0 to currentIndex), add new track, discard future
+      const history = state.queue.slice(0, state.currentIndex + 1);
+      state.queue = [...history, action.payload];
+      state.originalQueue = [...history, action.payload]; // Update original queue too
+      state.currentIndex = state.queue.length - 1;
+      state.currentTrack = action.payload;
+      state.position = 0;
+      state.duration = action.payload.duration || 0;
+    },
+    playAlbumWithHistory: (state, action: PayloadAction<{ tracks: Track[]; startIndex: number }>) => {
+      const { tracks, startIndex } = action.payload;
+      // Keep history (0 to currentIndex)
+      const history = state.queue.slice(0, state.currentIndex + 1);
+      
+      // Append new tracks
+      state.queue = [...history, ...tracks];
+      state.originalQueue = [...history, ...tracks];
+      
+      // Set current index to the start of the new tracks + startIndex
+      state.currentIndex = history.length + startIndex;
+      state.currentTrack = state.queue[state.currentIndex];
+      state.position = 0;
+      state.duration = state.queue[state.currentIndex].duration || 0;
+    },
+    removeFromQueue: (state, action: PayloadAction<string>) => {
+      // Remove by ID. If multiple, remove the first one found after current index?
+      // Or better, remove by index to be safe. Let's use index.
+      // Actually, the UI will likely provide an index.
+      // But let's stick to ID for now if the user didn't specify, or Index.
+      // Index is safer for duplicates.
+    },
+    removeTrackFromQueue: (state, action: PayloadAction<number>) => {
+      const indexToRemove = action.payload;
+      if (indexToRemove > state.currentIndex) {
+        // Removing from future
+        state.queue.splice(indexToRemove, 1);
+        state.originalQueue.splice(indexToRemove, 1);
+      } else if (indexToRemove < state.currentIndex) {
+        // Removing from history
+        state.queue.splice(indexToRemove, 1);
+        state.originalQueue.splice(indexToRemove, 1);
+        state.currentIndex -= 1; // Adjust current index
+      }
+      // If removing current track, play next? Or stop?
+      // Usually queue management allows removing upcoming tracks.
+      // If removing current, maybe skip to next.
+    },
+    reorderQueue: (state, action: PayloadAction<{ from: number; to: number }>) => {
+      const { from, to } = action.payload;
+      // Don't allow moving the current track or moving things before current track for simplicity?
+      // Or allow full reorder.
+      // If we move current track, currentIndex changes.
+      
+      const item = state.queue[from];
+      state.queue.splice(from, 1);
+      state.queue.splice(to, 0, item);
+      
+      // Update currentIndex if needed
+      if (state.currentIndex === from) {
+        state.currentIndex = to;
+      } else if (state.currentIndex > from && state.currentIndex <= to) {
+        state.currentIndex -= 1;
+      } else if (state.currentIndex < from && state.currentIndex >= to) {
+        state.currentIndex += 1;
+      }
+      
+      state.originalQueue = [...state.queue];
+    },
     setIsPlaying: (state, action: PayloadAction<boolean>) => {
       state.isPlaying = action.payload;
     },
@@ -168,6 +237,10 @@ export const {
   setRepeat,
   setIsLoading,
   resetPlayer,
+  playIndependentTrack,
+  playAlbumWithHistory,
+  removeTrackFromQueue,
+  reorderQueue,
 } = playerSlice.actions;
 
 export default playerSlice.reducer;

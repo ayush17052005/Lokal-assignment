@@ -10,7 +10,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const useSongActions = () => {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
-  const { loadTrack } = useAudioPlayer();
+  const { playIndependent } = useAudioPlayer();
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [isSongInfoVisible, setIsSongInfoVisible] = useState(false);
 
@@ -48,7 +48,7 @@ export const useSongActions = () => {
       return;
     }
 
-    await loadTrack({
+    playIndependent({
       id: song.id,
       title: song.name,
       artist,
@@ -61,7 +61,7 @@ export const useSongActions = () => {
     navigation.navigate('Player', {
       songId: song.id,
     });
-  }, [loadTrack, navigation, dispatch]);
+  }, [playIndependent, navigation, dispatch]);
 
   const openSongInfo = (song: any) => {
     setSelectedSong(song);

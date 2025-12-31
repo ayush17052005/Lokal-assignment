@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useArtistSongs, useSongSuggestions } from '../../../api/hooks';
+import { useArtistSongs } from '../../../api/hooks';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSongActions } from '../../../hooks';
 import { useAppSelector } from '../../../store/hooks';
@@ -31,9 +31,7 @@ const SuggestionScreen = () => {
   const lastArtistId = lastPlayedSongData?.artists?.primary?.[0]?.id;
   const lastArtistName = lastPlayedSongData?.artists?.primary?.[0]?.name;
 
-  const { data: suggestionsData, isLoading: isSuggestionsLoading } = useSongSuggestions(lastPlayedSongId, {
-    enabled: !!lastPlayedSongId,
-  });
+ 
 
   const { data: artistSongsData, isLoading: isArtistSongsLoading } = useArtistSongs(lastArtistId, undefined, {
     enabled: !!lastArtistId,

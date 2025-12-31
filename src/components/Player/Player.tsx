@@ -3,19 +3,22 @@ import Slider from '@react-native-community/slider';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import {
-    Dimensions,
-    Image,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { useTheme } from '../../context/ThemeContext';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { toggleLike } from '../../store/slices/librarySlice';
 import { setRepeat, toggleShuffle } from '../../store/slices/playerSlice';
 import { RootStackParamList } from '../../types/navigation';
+import QueueList from './QueueList';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Player'>;
 
@@ -25,6 +28,7 @@ const Player = ({ route, navigation }: Props) => {
   const { colors, isDark } = useTheme();
   const dispatch = useAppDispatch();
   const [isSeeking, setIsSeeking] = useState(false);
+  const [isQueueVisible, setQueueVisible] = useState(false);
 
   const {
     currentTrack,
@@ -37,9 +41,31 @@ const Player = ({ route, navigation }: Props) => {
     skipBackward,
     skipToNext,
     skipToPrevious,
+    queue,
+    currentIndex,
+    reorderQueue,
+    removeFromQueue,
+    playTrackAtIndex,
   } = useAudioPlayer();
 
   const { shuffle: isShuffle, repeat: repeatMode } = useAppSelector((state) => state.player);
+  const { likedSongs } = useAppSelector((state) => state.library);
+
+  const isLiked = currentTrack ? likedSongs.some(item => item.id === currentTrack.id) : false;
+
+  const handleToggleLike = () => {
+    if (currentTrack) {
+      dispatch(toggleLike({
+        id: currentTrack.id,
+        type: 'song',
+        title: currentTrack.title,
+        subtitle: currentTrack.artist,
+        image: currentTrack.coverUrl,
+        timestamp: Date.now(),
+        data: currentTrack.data || {},
+      }));
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -178,30 +204,43 @@ const Player = ({ route, navigation }: Props) => {
 
       {/* Secondary Controls */}
       <View style={styles.secondaryControls}>
-        <TouchableOpacity onPress={handleToggleShuffle}>
+        <TouchableOpacity onPress={handleToggleLike}>
           <Ionicons
-            name="shuffle"
-            size={24}
-            color={isShuffle ? colors.primary : colors.textSecondary}
+            name={isLiked ? "heart" : "heart-outline"}
+            size={28}
+            color={isLiked ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleToggleRepeat}>
-          <Ionicons
-            name={getRepeatIcon()}
-            size={24}
-            color={repeatMode !== 'off' ? colors.primary : colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <Ionicons name="wifi" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color={colors.textSecondary} />
+        <TouchableOpacity onPress={() => setQueueVisible(true)}>
+          <Ionicons name="list" size={28} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        isVisible={isQueueVisible}
+        onBackdropPress={() => setQueueVisible(false)}
+        onSwipeComplete={() => setQueueVisible(false)}
+        swipeDirection="down"
+        style={{ margin: 0, justifyContent: 'flex-end' }}
+      >
+        <View style={{ height: '70%', backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          <View style={{ alignItems: 'center', padding: 10 }}>
+            <View style={{ width: 40, height: 5, backgroundColor: '#ccc', borderRadius: 2.5 }} />
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 10 }}>Queue</Text>
+          </View>
+          <QueueList
+            queue={queue}
+            currentTrack={currentTrack}
+            currentIndex={currentIndex}
+            onReorder={reorderQueue}
+            onRemove={removeFromQueue}
+            onPlay={(index) => {
+              playTrackAtIndex(index);
+            }}
+          />
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -270,7 +309,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 10,
     paddingHorizontal: 10,
   },
   playButton: {

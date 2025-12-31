@@ -1,18 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { toggleLike } from '../../store/slices/librarySlice';
 import { Track } from '../../store/slices/playerSlice';
+import { RootStackParamList } from '../../types/navigation';
 
 interface SongInfoProps {
   isVisible: boolean;
@@ -23,21 +28,28 @@ interface SongInfoProps {
     title?: string;
     artist?: string;
     artists?: {
-      primary?: Array<{ name: string }>;
+      primary?: Array<{ name: string; id?: string }>;
     };
     primaryArtists?: string;
+    album?: { id: string; name: string };
     duration?: number | string;
     cover?: string;
     image?: Array<{ quality: string; url: string }>;
     downloadUrl?: Array<{ quality: string; url: string }>;
     url?: string;
+    data?: any;
   };
 }
 
 const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { addTrackToQueue, playTrackNext } = useAudioPlayer();
+  const { likedSongs } = useAppSelector((state) => state.library);
+
+  const isLiked = likedSongs.some(item => item.id === song.id);
 
   // Helper functions to get song details
   const getSongTitle = () => song.name || song.title || 'Unknown';
@@ -73,7 +85,21 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
           coverUrl: getCoverUrl(),
           audioUrl: audioUrl,
           duration: typeof song.duration === 'number' ? song.duration : 0,
+          data: song.data || song,
       };
+  };
+
+  const handleToggleLike = () => {
+    const track = getTrack();
+    dispatch(toggleLike({
+      id: track.id,
+      type: 'song',
+      title: track.title,
+      subtitle: track.artist,
+      image: track.coverUrl,
+      timestamp: Date.now(),
+      data: track.data || {},
+    }));
   };
 
   const menuOptions = [
@@ -99,6 +125,36 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
             break;
         case 'add-queue':
             addTrackToQueue(track);
+            break;
+        case 'go-album':
+            const album = song.album || song.data?.album;
+            if (album?.id) {
+                onClose();
+                navigation.navigate('AlbumDetails', {
+                    albumId: album.id,
+                    name: album.name || 'Unknown Album',
+                    artist: getArtistName(),
+                    year: '',
+                    songs: 0,
+                    imageUrl: getCoverUrl(),
+                });
+                return;
+            }
+            break;
+        case 'go-artist':
+             const artists = song.artists || song.data?.artists;
+             const artistId = artists?.primary?.[0]?.id;
+             if (artistId) {
+                 onClose();
+                 navigation.navigate('ArtistDetails', {
+                     artistId: artistId,
+                     name: getArtistName(),
+                     albums: 0,
+                     songs: 0,
+                     imageUrl: getCoverUrl(),
+                 });
+                 return;
+             }
             break;
         // Add other cases as needed
     }
@@ -141,8 +197,12 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
               {getArtistName()} | {getDuration()} mins
             </Text>
           </View>
-          <TouchableOpacity style={styles.favoriteButton}>
-            <Ionicons name="heart-outline" size={28} color={colors.text} />
+          <TouchableOpacity style={styles.favoriteButton} onPress={handleToggleLike}>
+            <Ionicons 
+              name={isLiked ? "heart" : "heart-outline"} 
+              size={28} 
+              color={isLiked ? colors.primary : colors.text} 
+            />
           </TouchableOpacity>
         </View>
 

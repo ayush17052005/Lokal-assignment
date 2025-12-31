@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useSongSuggestions } from '../../../api/hooks';
+import { useSongs } from '../../../api/hooks';
 import Songinfo from '../../../components/Songs/Songinfo';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSongActions } from '../../../hooks';
@@ -21,13 +21,19 @@ const SongsScreen = () => {
   
   const { history } = useAppSelector((state) => state.library);
   const recentlyPlayed = history.filter(item => item.type === 'song');
-  const lastPlayedSongId = recentlyPlayed[0]?.id || '';
 
-  const { data: suggestionsData, isLoading } = useSongSuggestions(lastPlayedSongId, {
-    enabled: !!lastPlayedSongId,
-  });
+  const { data: songsData, isLoading } = useSongs({ limit: 50 });
+  const generalSongs = songsData?.data?.results || [];
 
-  const songs = suggestionsData?.data || [];
+  const songs = React.useMemo(() => {
+      const recent = recentlyPlayed.map(item => item.data);
+      // Combine recent and general
+      const combined = [...recent, ...generalSongs];
+      // Deduplicate
+      const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+      // Shuffle
+      return unique.sort(() => Math.random() - 0.5);
+  }, [recentlyPlayed, generalSongs]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -81,7 +87,7 @@ const SongsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {lastPlayedSongId ? 'No recommendations found' : 'Play a song to get recommendations'}
+              No songs found
             </Text>
           </View>
         }

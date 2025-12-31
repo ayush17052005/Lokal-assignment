@@ -21,11 +21,13 @@ export interface PlayStats {
 
 interface LibraryState {
   history: HistoryItem[];
+  likedSongs: HistoryItem[];
   stats: Record<string, PlayStats>;
 }
 
 const initialState: LibraryState = {
   history: [],
+  likedSongs: [],
   stats: {},
 };
 
@@ -33,6 +35,15 @@ const librarySlice = createSlice({
   name: 'library',
   initialState,
   reducers: {
+    toggleLike: (state, action: PayloadAction<HistoryItem>) => {
+      const item = action.payload;
+      const index = state.likedSongs.findIndex(i => i.id === item.id);
+      if (index >= 0) {
+        state.likedSongs.splice(index, 1);
+      } else {
+        state.likedSongs.unshift(item);
+      }
+    },
     addToHistory: (state, action: PayloadAction<HistoryItem>) => {
       const newItem = action.payload;
       
@@ -70,5 +81,5 @@ const librarySlice = createSlice({
   },
 });
 
-export const { addToHistory, clearHistory, resetStats } = librarySlice.actions;
+export const { addToHistory, clearHistory, resetStats, toggleLike } = librarySlice.actions;
 export default librarySlice.reducer;
