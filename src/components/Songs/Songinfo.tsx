@@ -11,6 +11,8 @@ import {
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { Track } from '../../store/slices/playerSlice';
 
 interface SongInfoProps {
   isVisible: boolean;
@@ -27,12 +29,15 @@ interface SongInfoProps {
     duration?: number | string;
     cover?: string;
     image?: Array<{ quality: string; url: string }>;
+    downloadUrl?: Array<{ quality: string; url: string }>;
+    url?: string;
   };
 }
 
 const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { addTrackToQueue, playTrackNext } = useAudioPlayer();
 
   // Helper functions to get song details
   const getSongTitle = () => song.name || song.title || 'Unknown';
@@ -56,6 +61,21 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
     return '00:00';
   };
 
+  const getTrack = (): Track => {
+      const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
+                       song.downloadUrl?.[song.downloadUrl.length - 1]?.url || 
+                       song.url || '';
+      
+      return {
+          id: song.id,
+          title: getSongTitle(),
+          artist: getArtistName(),
+          coverUrl: getCoverUrl(),
+          audioUrl: audioUrl,
+          duration: typeof song.duration === 'number' ? song.duration : 0,
+      };
+  };
+
   const menuOptions = [
     { id: 'play-next', icon: 'play-forward-outline', label: 'Play Next' },
     { id: 'add-queue', icon: 'list-outline', label: 'Add to Playing Queue' },
@@ -71,7 +91,17 @@ const Songinfo: React.FC<SongInfoProps> = ({ isVisible, onClose, song }) => {
 
   const handleOptionPress = (optionId: string) => {
     console.log('Option pressed:', optionId);
-    // Handle option actions here
+    const track = getTrack();
+    
+    switch (optionId) {
+        case 'play-next':
+            playTrackNext(track);
+            break;
+        case 'add-queue':
+            addTrackToQueue(track);
+            break;
+        // Add other cases as needed
+    }
     onClose();
   };
 

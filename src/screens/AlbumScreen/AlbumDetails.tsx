@@ -3,16 +3,22 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-    FlatList,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { useAlbumById } from '../../api/hooks';
+import { Song } from '../../api/types';
+import Songinfo from '../../components/Songs/Songinfo';
 import { useTheme } from '../../context/ThemeContext';
+import { useAudioPlayer } from '../../hooks';
+import { Track } from '../../store/slices/playerSlice';
 import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -35,63 +41,110 @@ const AlbumDetails: React.FC<AlbumDetailsProps> = ({ route }) => {
   const navigation = useNavigation<NavigationProp>();
   const { albumId, name, artist, year, songs, imageUrl } = route.params;
   const [isShuffleActive, setIsShuffleActive] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [isSongInfoVisible, setIsSongInfoVisible] = useState(false);
+  const { playAlbum, currentTrack, isPlaying, addTrackToQueue, playTrackNext, shuffleQueue } = useAudioPlayer();
 
-  // Sample songs data - replace with real data from API
-  const albumSongs = [
-    { id: '1', title: 'Track 1', artist: artist, cover: imageUrl, duration: '3:45' },
-    { id: '2', title: 'Track 2', artist: artist, cover: imageUrl, duration: '4:12' },
-    { id: '3', title: 'Track 3', artist: artist, cover: imageUrl, duration: '3:28' },
-    { id: '4', title: 'Track 4', artist: artist, cover: imageUrl, duration: '5:01' },
-    { id: '5', title: 'Track 5', artist: artist, cover: imageUrl, duration: '3:56' },
-  ];
+  const { data: albumData, isLoading } = useAlbumById(albumId);
+  const albumSongs = albumData?.data?.songs || [];
 
-  const handlePlaySong = (song: typeof albumSongs[0]) => {
-    // TODO: Implement player
-    console.log('Play song:', song.title);
+  const getTrackFromSong = (song: Song): Track => {
+    console.log(song);
+    const artistName = song.artists?.primary?.[0]?.name  || artist;
+    // Get highest quality image
+    const coverUrl = song.image?.find(img => img.quality === '500x500')?.url || 
+                     song.image?.[song.image.length - 1]?.url || 
+                     imageUrl;
+    
+    // Get highest quality audio
+    const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
+                     song.downloadUrl?.[song.downloadUrl.length - 1]?.url || 
+                     song.url; // Fallback
+
+    return {
+      id: song.id,
+      title: song.name,
+      artist: artistName,
+      coverUrl,
+      audioUrl,
+      duration: song.duration,
+    };
+  };
+
+  const handlePlaySong = async (index: number) => {
+    const tracks = albumSongs.map(getTrackFromSong);
+    await playAlbum(tracks, index);
+    navigation.navigate('Player', { songId: tracks[index].id });
   };
 
   const handleShuffle = () => {
-    setIsShuffleActive(!isShuffleActive);
-    // Implement shuffle logic
+    const tracks = albumSongs.map(getTrackFromSong);
+    playAlbum(tracks, 0).then(() => {
+        shuffleQueue();
+        setIsShuffleActive(true);
+    });
   };
 
   const handlePlayAll = () => {
-    // Play all songs
-    if (albumSongs.length > 0) {
-      handlePlaySong(albumSongs[0]);
-    }
+    const tracks = albumSongs.map(getTrackFromSong);
+    playAlbum(tracks, 0);
+    setIsShuffleActive(false);
   };
 
-  const renderSongItem = ({ item, index }: { item: typeof albumSongs[0]; index: number }) => (
+  const handleSongOptions = (song: Song) => {
+      setSelectedSong(song);
+      setIsSongInfoVisible(true);
+  };
+
+  const renderSongItem = ({ item, index }: { item: Song; index: number }) => {
+    const isCurrentSong = currentTrack?.id === item.id;
+    const isSongPlaying = isCurrentSong && isPlaying;
+
+    return (
     <TouchableOpacity
-      style={styles.songItem}
-      onPress={() => handlePlaySong(item)}
+      style={[styles.songItem, isCurrentSong && { backgroundColor: isDark ? '#333' : '#e0e0e0', borderRadius: 8 }]}
+      onPress={() => handlePlaySong(index)}
       activeOpacity={0.7}
     >
-      <Text style={[styles.trackNumber, { color: colors.textSecondary }]}>
-        {(index + 1).toString().padStart(2, '0')}
-      </Text>
+      <View style={styles.trackNumberContainer}>
+          {isSongPlaying ? (
+              <Ionicons name="musical-notes" size={16} color={colors.primary} />
+          ) : (
+            <Text style={[styles.trackNumber, { color: isCurrentSong ? colors.primary : colors.textSecondary }]}>
+                {(index + 1).toString().padStart(2, '0')}
+            </Text>
+          )}
+      </View>
+      
       <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, { color: colors.text }]} numberOfLines={1}>
-          {item.title}
+        <Text style={[styles.songTitle, { color: isCurrentSong ? colors.primary : colors.text }]} numberOfLines={1}>
+          {item.name}
         </Text>
         <Text style={[styles.songArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-          {item.artist}
+          {item.artists?.primary?.[0]?.name || artist}
         </Text>
       </View>
       <Text style={[styles.songDuration, { color: colors.textSecondary }]}>
-        {item.duration}
+        {Math.floor(item.duration / 60)}:{String(item.duration % 60).padStart(2, '0')}
       </Text>
-      <TouchableOpacity style={styles.songMoreButton}>
+      <TouchableOpacity style={styles.songMoreButton} onPress={() => handleSongOptions(item)}>
         <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </TouchableOpacity>
-  );
+  )};
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
-        barStyle={isDark ? 'dark-content' : 'dark-content'}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
       />
 
@@ -158,6 +211,14 @@ const AlbumDetails: React.FC<AlbumDetailsProps> = ({ route }) => {
           />
         </View>
       </ScrollView>
+
+      {selectedSong && (
+        <Songinfo
+          isVisible={isSongInfoVisible}
+          onClose={() => setIsSongInfoVisible(false)}
+          song={selectedSong}
+        />
+      )}
     </View>
   );
 };
@@ -261,9 +322,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  trackNumberContainer: {
+      width: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
   },
   trackNumber: {
-    width: 40,
     fontSize: 16,
     fontWeight: '600',
   },

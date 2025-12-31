@@ -3,19 +3,20 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSearchAlbums, useSearchArtists, useSearchPlaylists, useSearchSongs } from '../../api/hooks';
 import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
+import Songinfo from '../../components/Songs/Songinfo';
 import { useTheme } from '../../context/ThemeContext';
 import { useAlbumActions, useArtistActions, useSongActions } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -37,7 +38,7 @@ const SearchScreen = () => {
   const [activeFilter, setActiveFilter] = useState('Songs');
   
   // Centralized action hooks
-  const { playSong, getImageUrl: getSongImage } = useSongActions();
+  const { playSong, getImageUrl: getSongImage, openSongInfo, closeSongInfo, selectedSong, isSongInfoVisible } = useSongActions();
   const { openArtistDetails, getImageUrl: getArtistImage } = useArtistActions();
   const { openAlbumDetails, getImageUrl: getAlbumImage } = useAlbumActions();
 
@@ -252,7 +253,7 @@ const SearchScreen = () => {
         <TouchableOpacity style={styles.resultPlayButton} onPress={() => playSong(item)}>
           <Ionicons name="play-circle" size={32} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.resultMoreButton}>
+        <TouchableOpacity style={styles.resultMoreButton} onPress={() => openSongInfo(item)}>
           <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -461,6 +462,14 @@ const SearchScreen = () => {
       {searchState === 'results' && renderResultsState()}
       
       <MiniPlayer />
+      
+      {selectedSong && (
+        <Songinfo
+          isVisible={isSongInfoVisible}
+          onClose={closeSongInfo}
+          song={selectedSong}
+        />
+      )}
     </View>
   );
 };

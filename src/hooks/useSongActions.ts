@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
+import { useAppDispatch } from '../store/hooks';
+import { addToHistory } from '../store/slices/librarySlice';
 import { RootStackParamList } from '../types/navigation';
 import { useAudioPlayer } from './useAudioPlayer';
 
@@ -8,6 +10,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const useSongActions = () => {
   const navigation = useNavigation<NavigationProp>();
+  const dispatch = useAppDispatch();
   const { loadTrack } = useAudioPlayer();
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [isSongInfoVisible, setIsSongInfoVisible] = useState(false);
@@ -46,6 +49,17 @@ export const useSongActions = () => {
       return;
     }
 
+    // Add to history/stats
+    dispatch(addToHistory({
+      id: song.id,
+      type: 'song',
+      title: song.name,
+      subtitle: artist,
+      image: coverUrl,
+      timestamp: Date.now(),
+      data: song, // Store full song object for re-playing
+    }));
+
     await loadTrack({
       id: song.id,
       title: song.name,
@@ -58,7 +72,7 @@ export const useSongActions = () => {
     navigation.navigate('Player', {
       songId: song.id,
     });
-  }, [loadTrack, navigation]);
+  }, [loadTrack, navigation, dispatch]);
 
   const openSongInfo = (song: any) => {
     setSelectedSong(song);

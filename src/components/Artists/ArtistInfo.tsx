@@ -23,8 +23,8 @@ interface ArtistInfoProps {
   artist: {
     id: string;
     name: string;
-    albums: number;
-    songs: number;
+    albums?: number;
+    songs?: number;
     image: string;
   };
 }
@@ -52,8 +52,8 @@ const ArtistInfo: React.FC<ArtistInfoProps> = ({ isVisible, onClose, artist }) =
     navigation.navigate('ArtistDetails', {
       artistId: artist.id,
       name: artist.name,
-      albums: artist.albums,
-      songs: artist.songs,
+      albums: artist.albums || 0,
+      songs: artist.songs || 0,
       imageUrl: artist.image,
     });
   };
@@ -85,7 +85,7 @@ const ArtistInfo: React.FC<ArtistInfoProps> = ({ isVisible, onClose, artist }) =
               {artist.name}
             </Text>
             <Text style={[styles.artistStats, { color: colors.textSecondary }]}>
-              {artist.albums} Album | {artist.songs} Songs
+              {artist.albums || 0} Album | {artist.songs || 0} Songs
             </Text>
           </View>
         </TouchableOpacity>

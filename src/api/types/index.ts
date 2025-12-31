@@ -1,37 +1,51 @@
 // Common types
 export interface Image {
   quality: string;
-  link: string;
+  url: string;
 }
 
 export interface DownloadUrl {
   quality: string;
-  link: string;
+  url: string;
+}
+
+export interface ArtistMini {
+  id: string;
+  name: string;
+  role: string;
+  image: Image[];
+  type: string;
+  url: string;
+}
+
+export interface SongArtists {
+  primary: ArtistMini[];
+  featured: ArtistMini[];
+  all: ArtistMini[];
 }
 
 // Song types
 export interface Song {
   id: string;
   name: string;
+  type: string;
+  year: string;
+  releaseDate: string;
+  duration: number;
+  label: string;
+  explicitContent: boolean;
+  playCount: number;
+  language: string;
+  hasLyrics: boolean;
+  lyricsId: string | null;
+  url: string;
+  copyright: string;
   album: {
     id: string;
     name: string;
     url: string;
   };
-  year: string;
-  releaseDate: string;
-  duration: number;
-  label: string;
-  primaryArtists: string;
-  primaryArtistsId: string;
-  featuredArtists: string;
-  featuredArtistsId: string;
-  explicitContent: boolean;
-  playCount: number;
-  language: string;
-  hasLyrics: boolean;
-  url: string;
-  copyright: string;
+  artists: SongArtists;
   image: Image[];
   downloadUrl: DownloadUrl[];
 }
@@ -63,13 +77,22 @@ export interface Artist {
   role: string;
   image: Image[];
   type: string;
-  isVerified: boolean;
+  isVerified?: boolean;
   dominantLanguage?: string;
   dominantType?: string;
-  followerCount?: number;
-  fanCount?: number;
+  followerCount?: number | string;
+  fanCount?: number | string;
   isRadioPresent?: boolean;
-  bio?: string;
+  bio?: string | any[];
+  dob?: string | null;
+  fb?: string | null;
+  twitter?: string | null;
+  wiki?: string | null;
+  availableLanguages?: string[];
+  topSongs?: Song[];
+  topAlbums?: Album[];
+  singles?: Album[];
+  similarArtists?: Artist[];
 }
 
 export interface ArtistsResponse {
@@ -97,16 +120,22 @@ export interface ArtistSongsResponse {
 export interface Album {
   id: string;
   name: string;
-  year: string;
-  releaseDate: string;
-  songCount: number;
+  description: string;
+  type: string;
+  year: number;
+  playCount: number | null;
+  language: string;
+  explicitContent: boolean;
   url: string;
-  primaryArtistsId: string;
-  primaryArtists: string;
-  featuredArtists: string;
-  artists: Artist[];
+  songCount: number;
+  artists: SongArtists;
   image: Image[];
-  songs?: Song[];
+  songs: Song[];
+}
+
+export interface AlbumDetailResponse {
+  success: boolean;
+  data: Album;
 }
 
 export interface ArtistAlbumsResponse {
@@ -115,6 +144,27 @@ export interface ArtistAlbumsResponse {
     total: number;
     albums: Album[];
   };
+}
+
+export interface Playlist {
+  id: string;
+  userId: string;
+  name: string;
+  followerCount: string;
+  songCount: string;
+  fanCount: string;
+  username: string;
+  firstname: string;
+  lastname: string;
+  shares: string;
+  image: Image[];
+  url: string;
+  songs: Song[];
+}
+
+export interface PlaylistDetailResponse {
+  success: boolean;
+  data: Playlist;
 }
 
 // Search types

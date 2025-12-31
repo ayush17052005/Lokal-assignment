@@ -2,12 +2,18 @@ import { useAudioPlayerStatus, useAudioPlayer as useExpoAudioPlayer } from 'expo
 import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
-    setCurrentTrack,
+    addToQueue,
+    playNextInQueue,
+    playNextTrack,
+    playPreviousTrack,
+    playTrackAtIndex,
     setDuration,
     setIsLoading,
     setIsPlaying,
     setPosition,
-    Track,
+    setQueue,
+    toggleShuffle,
+    Track
 } from '../store/slices/playerSlice';
 
 interface AudioPlayerContextType {
@@ -20,12 +26,17 @@ interface AudioPlayerContextType {
   skipBackward: () => Promise<void>;
   skipToNext: () => Promise<void>;
   skipToPrevious: () => Promise<void>;
+  playAlbum: (tracks: Track[], startIndex?: number) => Promise<void>;
+  addTrackToQueue: (track: Track) => void;
+  playTrackNext: (track: Track) => void;
+  shuffleQueue: () => void;
   currentTrack: Track | null;
   isPlaying: boolean;
   position: number;
   duration: number;
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
+  queue: Track[];
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -35,7 +46,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const player = useExpoAudioPlayer();
   const status = useAudioPlayerStatus(player);
 
-  const { currentTrack, shuffle, repeat } = useAppSelector(
+  const { currentTrack, shuffle, repeat, queue, currentIndex } = useAppSelector(
     (state) => state.player
   );
 
@@ -59,69 +70,87 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         player.seekTo(0);
         player.play();
       } else {
-        dispatch(setIsPlaying(false));
+        // Auto play next track
+        if (currentIndex < queue.length - 1 || repeat === 'all') {
+           dispatch(playNextTrack());
+        } else {
+           dispatch(setIsPlaying(false));
+        }
       }
     }
-  }, [status.didJustFinish, repeat, dispatch, player]);
+  }, [status.didJustFinish, repeat, dispatch, player, currentIndex, queue.length]);
+
+  // Effect to load track when currentTrack changes in Redux
+  useEffect(() => {
+    const loadCurrentTrack = async () => {
+        if (currentTrack && currentTrack.audioUrl) {
+             try {
+                dispatch(setIsLoading(true));
+                console.log('Loading track from Redux change:', currentTrack.title);
+                player.replace({ uri: currentTrack.audioUrl });
+                player.play();
+             } catch (error) {
+                 console.error('Error loading track:', error);
+             } finally {
+                 dispatch(setIsLoading(false));
+             }
+        }
+    };
+    
+    loadCurrentTrack();
+  }, [currentTrack?.id]); // Only re-run if track ID changes
 
   const loadTrack = useCallback(
     async (track: Track) => {
-      try {
-        dispatch(setIsLoading(true));
-
-        if (!track.audioUrl) {
-          console.error('No audio URL provided for track:', track.title);
-          dispatch(setIsLoading(false));
-          return;
-        }
-
-        // If the same track is already loaded, just play it
-        if (currentTrack?.id === track.id && status.isLoaded) {
-          console.log('Track already loaded, resuming playback');
-          player.play();
-          dispatch(setIsPlaying(true));
-          dispatch(setIsLoading(false));
-          return;
-        }
-
-        console.log('Loading new track:', track.title);
-        dispatch(setCurrentTrack(track));
-
-        // Replace the current source with new track
-        player.replace({ uri: track.audioUrl });
-        player.play();
+        // This is for playing a single track immediately (replacing queue or just playing?)
+        // Let's assume it replaces queue with single track for now, or just plays it.
+        // Existing behavior was: dispatch(setCurrentTrack(track)); player.replace...
         
-        console.log('Track loaded and playing');
-        dispatch(setIsPlaying(true));
-      } catch (error) {
-        console.error('Error loading track:', error);
-      } finally {
-        dispatch(setIsLoading(false));
-      }
+        // Let's make it set a single track queue
+        dispatch(setQueue([track]));
     },
-    [dispatch, player, currentTrack, status.isLoaded]
+    [dispatch]
   );
+
+  const playAlbum = useCallback(async (tracks: Track[], startIndex = 0) => {
+      dispatch(setQueue(tracks));
+      if (startIndex > 0) {
+          dispatch(playTrackAtIndex(startIndex));
+      }
+  }, [dispatch]);
+
+  const addTrackToQueue = useCallback((track: Track) => {
+      dispatch(addToQueue(track));
+  }, [dispatch]);
+
+  const playTrackNext = useCallback((track: Track) => {
+      dispatch(playNextInQueue(track));
+  }, [dispatch]);
+  
+  const shuffleQueue = useCallback(() => {
+      dispatch(toggleShuffle());
+  }, [dispatch]);
 
   const play = useCallback(async () => {
     try {
       if (status.isLoaded) {
         player.play();
         dispatch(setIsPlaying(true));
-      } else {
-        console.warn('Cannot play: No source loaded');
+      } else if (currentTrack) {
+          // If we have a current track but not loaded (e.g. app restart), try to load
+          player.replace({ uri: currentTrack.audioUrl });
+          player.play();
       }
     } catch (error) {
       console.error('Error playing:', error);
     }
-  }, [dispatch, player, status.isLoaded]);
+  }, [dispatch, player, status.isLoaded, currentTrack]);
 
   const pause = useCallback(async () => {
     try {
       if (status.isLoaded) {
         player.pause();
         dispatch(setIsPlaying(false));
-      } else {
-        console.warn('Cannot pause: No source loaded');
       }
     } catch (error) {
       console.error('Error pausing:', error);
@@ -129,34 +158,12 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [dispatch, player, status.isLoaded]);
 
   const togglePlayPause = useCallback(async () => {
-    try {
-      console.log('togglePlayPause called, isLoaded:', status.isLoaded);
-      
-      if (!status.isLoaded) {
-        console.warn('No source loaded, cannot toggle playback');
-        // Try to reload the current track if we have one
-        if (currentTrack?.audioUrl) {
-          console.log('Attempting to reload current track');
-          player.replace({ uri: currentTrack.audioUrl });
-          player.play();
-          dispatch(setIsPlaying(true));
-        }
-        return;
-      }
-
-      if (status.playing) {
-        console.log('Pausing playback');
-        player.pause();
-        dispatch(setIsPlaying(false));
-      } else {
-        console.log('Resuming playback');
-        player.play();
-        dispatch(setIsPlaying(true));
-      }
-    } catch (error) {
-      console.error('Error toggling playback:', error);
+    if (status.playing) {
+        await pause();
+    } else {
+        await play();
     }
-  }, [dispatch, currentTrack, player, status.playing, status.isLoaded]);
+  }, [play, pause, status.playing]);
 
   const seekTo = useCallback(
     async (seconds: number) => {
@@ -176,7 +183,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     async (seconds: number) => {
       try {
         if (!status.isLoaded) {
-          console.warn('Cannot skip: No source loaded');
           return;
         }
         const currentPos = status.currentTime || 0;
@@ -194,25 +200,17 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const skipBackward = useCallback(() => skip(-10), [skip]);
 
   const skipToNext = useCallback(async () => {
-    console.log('Skip to next track');
-  }, []);
+    dispatch(playNextTrack());
+  }, [dispatch]);
 
   const skipToPrevious = useCallback(async () => {
-    try {
-      if (!status.isLoaded) {
-        console.warn('Cannot skip to previous: No source loaded');
-        return;
-      }
-      const currentPos = status.currentTime || 0;
-      if (currentPos > 3) {
+    const currentPos = status.currentTime || 0;
+    if (currentPos > 3) {
         player.seekTo(0);
-      } else {
-        console.log('Skip to previous track');
-      }
-    } catch (error) {
-      console.error('Error skipping to previous:', error);
+    } else {
+        dispatch(playPreviousTrack());
     }
-  }, [player, status.currentTime, status.isLoaded]);
+  }, [player, status.currentTime, dispatch]);
 
   const value = {
     loadTrack,
@@ -224,12 +222,17 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     skipBackward,
     skipToNext,
     skipToPrevious,
+    playAlbum,
+    addTrackToQueue,
+    playTrackNext,
+    shuffleQueue,
     currentTrack,
     isPlaying: status.playing || false,
     position: status.currentTime || 0,
     duration: status.duration || 0,
     shuffle,
     repeat,
+    queue
   };
 
   return (

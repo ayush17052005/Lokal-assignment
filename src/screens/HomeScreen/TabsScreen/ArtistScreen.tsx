@@ -1,6 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     Image,
     StyleSheet,
@@ -8,57 +11,72 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import ArtistInfo from '../../../components/Artists/ArtistInfo';
+import { useSearchArtists } from '../../../api/hooks';
 import { useTheme } from '../../../context/ThemeContext';
+import { RootStackParamList } from '../../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const ArtistScreen = () => {
   const { colors } = useTheme();
-  const [selectedArtist, setSelectedArtist] = useState<typeof artists[0] | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const navigation = useNavigation<NavigationProp>();
 
-  const artists = [
-    { id: '1', name: 'Ariana Grande', albums: 1, songs: 20, image: 'https://picsum.photos/200/200?random=10' },
-    { id: '2', name: 'The Weeknd', albums: 1, songs: 16, image: 'https://picsum.photos/200/200?random=11' },
-    { id: '3', name: 'Acidrap', albums: 2, songs: 28, image: 'https://picsum.photos/200/200?random=12' },
-    { id: '4', name: 'Ania Szarmarch', albums: 1, songs: 12, image: 'https://picsum.photos/200/200?random=13' },
-    { id: '5', name: 'Troye Sivan', albums: 1, songs: 14, image: 'https://picsum.photos/200/200?random=14' },
-    { id: '6', name: 'Ryan Jones', albums: 2, songs: 24, image: 'https://picsum.photos/200/200?random=15' },
-  ];
+  // Fetch artists (using search to get relevant artists)
+  const { data: artistsData, isLoading } = useSearchArtists({ query: 'MixSingh', limit: 20 });
+  const artists = artistsData?.data?.results || [];
 
-  const handleArtistPress = (artist: typeof artists[0]) => {
-    setSelectedArtist(artist);
-    setIsModalVisible(true);
+  const handleArtistPress = (artist: any) => {
+    const imageUrl = artist.image?.find((img: any) => img.quality === '500x500')?.url || 
+                     artist.image?.[artist.image.length - 1]?.url || 
+                     'https://picsum.photos/200/200';
+
+    navigation.navigate('ArtistDetails', {
+      artistId: artist.id,
+      name: artist.name,
+      albums: 0, // Default value as list might not have this
+      songs: 0, // Default value as list might not have this
+      imageUrl: imageUrl,
+    });
   };
 
-  const handleCloseModal = () => {
-    setIsModalVisible(false);
-    setSelectedArtist(null);
+  const renderArtistItem = ({ item }: { item: any }) => {
+    const imageUrl = item.image?.find((img: any) => img.quality === '150x150')?.url || 
+                     item.image?.[0]?.url || 
+                     'https://picsum.photos/200/200';
+
+    return (
+      <TouchableOpacity 
+        style={styles.artistItem}
+        onPress={() => handleArtistPress(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: imageUrl }} style={styles.artistImage} />
+        <View style={styles.artistInfo}>
+          <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.artistMeta, { color: colors.textSecondary }]}>
+            Artist
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
-  const renderArtistItem = ({ item }: { item: typeof artists[0] }) => (
-    <TouchableOpacity 
-      style={styles.artistItem}
-      onPress={() => handleArtistPress(item)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: item.image }} style={styles.artistImage} />
-      <View style={styles.artistInfo}>
-        <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={[styles.artistMeta, { color: colors.textSecondary }]}>
-          {item.albums} Album | {item.songs} Songs
-        </Text>
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.count, { color: colors.text }]}>85 artists</Text>
+        <Text style={[styles.count, { color: colors.text }]}>{artists.length} artists</Text>
         <TouchableOpacity style={styles.sortButton}>
-          <Text style={[styles.sortText, { color: colors.primary }]}>Date Added</Text>
+          <Text style={[styles.sortText, { color: colors.primary }]}>Trending</Text>
           <Ionicons name="swap-vertical" size={16} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -68,15 +86,12 @@ const ArtistScreen = () => {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No artists found</Text>
+          </View>
+        }
       />
-      
-      {selectedArtist && (
-        <ArtistInfo
-          isVisible={isModalVisible}
-          onClose={handleCloseModal}
-          artist={selectedArtist}
-        />
-      )}
     </View>
   );
 };
@@ -107,16 +122,17 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   artistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   artistImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   artistInfo: {
     flex: 1,
@@ -125,10 +141,17 @@ const styles = StyleSheet.create({
   artistName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   artistMeta: {
-    fontSize: 13,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  emptyText: {
+    fontSize: 16,
   },
 });
 

@@ -45,7 +45,7 @@ const HomeScreen = ({ navigation }: Props) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
-        barStyle={isDark ? 'dark-content' : 'dark-content'}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
       />
       

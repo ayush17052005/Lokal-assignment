@@ -3,16 +3,23 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-    FlatList,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useArtistById } from '../../api/hooks';
+import { Album, Artist, Song } from '../../api/types';
+import Songinfo from '../../components/Songs/Songinfo';
 import { useTheme } from '../../context/ThemeContext';
+import { useAudioPlayer } from '../../hooks';
+import { Track } from '../../store/slices/playerSlice';
 import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,69 +39,150 @@ interface ArtistDetailsProps {
 const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const insets = useSafeAreaInsets();
   const { artistId, name, albums, songs, imageUrl } = route.params;
+  
   const [isShuffleActive, setIsShuffleActive] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [isSongInfoVisible, setIsSongInfoVisible] = useState(false);
 
-  // Sample songs data - replace with real data
-  const artistSongs = [
-    { id: '1', title: 'Bang Bang', artist: name, cover: 'https://picsum.photos/200/200?random=11' },
-    { id: '2', title: 'The Light Is Coming', artist: name, cover: 'https://picsum.photos/200/200?random=12' },
-    { id: '3', title: 'Dangerous Woman', artist: name, cover: 'https://picsum.photos/200/200?random=13' },
-  ];
+  const { playAlbum, currentTrack, isPlaying, shuffleQueue } = useAudioPlayer();
+  const { data: artistData, isLoading } = useArtistById(artistId);
 
-  const handlePlaySong = (song: typeof artistSongs[0]) => {
-    // TODO: Implement player
-    console.log('Play song:', song.title);
+  const artist = artistData?.data;
+  const topSongs = artist?.topSongs || [];
+  const topAlbums = artist?.topAlbums || [];
+  const singles = artist?.singles || [];
+  const similarArtists = artist?.similarArtists || [];
+
+  const getTrackFromSong = (song: Song): Track => {
+    const artistName = song.artists?.primary?.[0]?.name || artist?.name || name;
+    // Get highest quality image
+    const coverUrl = song.image?.find(img => img.quality === '500x500')?.url || 
+                     song.image?.[song.image.length - 1]?.url || 
+                     imageUrl;
+    
+    // Get highest quality audio
+    const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
+                     song.downloadUrl?.[song.downloadUrl.length - 1]?.url || 
+                     song.url; // Fallback
+
+    return {
+      id: song.id,
+      title: song.name,
+      artist: artistName,
+      coverUrl,
+      audioUrl,
+      duration: song.duration,
+    };
+  };
+
+  const handlePlaySong = async (index: number) => {
+    const tracks = topSongs.map(getTrackFromSong);
+    await playAlbum(tracks, index);
+    navigation.navigate('Player', { songId: tracks[index].id });
   };
 
   const handleShuffle = () => {
-    setIsShuffleActive(!isShuffleActive);
-    // Implement shuffle logic
+    const tracks = topSongs.map(getTrackFromSong);
+    playAlbum(tracks, 0).then(() => {
+        shuffleQueue();
+        setIsShuffleActive(true);
+    });
   };
 
   const handlePlayAll = () => {
-    // Play all songs
-    if (artistSongs.length > 0) {
-      handlePlaySong(artistSongs[0]);
-    }
+    const tracks = topSongs.map(getTrackFromSong);
+    playAlbum(tracks, 0);
+    setIsShuffleActive(false);
   };
 
-  const renderSongItem = ({ item }: { item: typeof artistSongs[0] }) => (
+  const handleSongOptions = (song: Song) => {
+      setSelectedSong(song);
+      setIsSongInfoVisible(true);
+  };
+
+  const renderSongItem = ({ item, index }: { item: Song; index: number }) => {
+    const isCurrentSong = currentTrack?.id === item.id;
+    const isSongPlaying = isCurrentSong && isPlaying;
+
+    return (
+      <TouchableOpacity
+        style={[styles.songItem, isCurrentSong && { backgroundColor: isDark ? '#333' : '#e0e0e0', borderRadius: 8 }]}
+        onPress={() => handlePlaySong(index)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: item.image?.[0]?.url || imageUrl }} style={styles.songCover} />
+        <View style={styles.songInfo}>
+          <Text style={[styles.songTitle, { color: isCurrentSong ? colors.primary : colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.songArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.artists?.primary?.[0]?.name || artist?.name || name}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.songMoreButton} onPress={() => handleSongOptions(item)}>
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderAlbumItem = ({ item }: { item: Album }) => (
     <TouchableOpacity
-      style={styles.songItem}
-      onPress={() => handlePlaySong(item)}
-      activeOpacity={0.7}
+      style={styles.albumItem}
+      onPress={() => navigation.push('AlbumDetails', {
+        albumId: item.id,
+        name: item.name,
+        artist: artist?.name || name,
+        year: item.year?.toString() || '',
+        songs: item.songCount || 0,
+        imageUrl: item.image?.[item.image.length - 1]?.url || '',
+      })}
     >
-      <Image source={{ uri: item.cover }} style={styles.songCover} />
-      <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, { color: colors.text }]} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={[styles.songArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-          {item.artist}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.songPlayButton}>
-        <Ionicons name="play-circle" size={32} color={colors.primary} />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.songMoreButton}>
-        <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-      </TouchableOpacity>
+      <Image source={{ uri: item.image?.[item.image.length - 1]?.url }} style={styles.albumCover} />
+      <Text style={[styles.albumTitle, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+      <Text style={[styles.albumYear, { color: colors.textSecondary }]}>{item.year}</Text>
     </TouchableOpacity>
   );
+
+  const renderArtistItem = ({ item }: { item: Artist }) => (
+    <TouchableOpacity
+      style={styles.similarArtistItem}
+      onPress={() => navigation.push('ArtistDetails', {
+        artistId: item.id,
+        name: item.name,
+        albums: 0,
+        songs: 0,
+        imageUrl: item.image?.[item.image.length - 1]?.url || '',
+      })}
+    >
+      <Image source={{ uri: item.image?.[item.image.length - 1]?.url }} style={styles.similarArtistImage} />
+      <Text style={[styles.similarArtistName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
-        barStyle={isDark ? 'dark-content' : 'dark-content'}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
       />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
+        <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.searchButton}>
           <Ionicons name="search" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -103,13 +191,18 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Artist Cover & Info */}
         <View style={styles.artistSection}>
-          <Image source={{ uri: imageUrl }} style={styles.artistCover} />
-          <Text style={[styles.artistName, { color: colors.text }]}>{name}</Text>
+          <Image 
+            source={{ uri: artist?.image?.[artist.image.length - 1]?.url || imageUrl }} 
+            style={styles.artistCover} 
+          />
+          <Text style={[styles.artistName, { color: colors.text }]}>{artist?.name || name}</Text>
           <Text style={[styles.artistMeta, { color: colors.textSecondary }]}>
-            {albums} Album  |  {songs} Songs  |  01:25:43 mins
+            {artist?.followerCount 
+              ? `${Number(artist.followerCount).toLocaleString()} Followers` 
+              : (albums > 0 || songs > 0) ? `${albums} Albums | ${songs} Songs` : 'Artist'}
           </Text>
         </View>
 
@@ -137,24 +230,81 @@ const ArtistDetails: React.FC<ArtistDetailsProps> = ({ route }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Songs Section */}
-        <View style={styles.songsSection}>
-          <View style={styles.songsSectionHeader}>
-            <Text style={[styles.songsTitle, { color: colors.text }]}>Songs</Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
-            </TouchableOpacity>
+        {/* Top Songs Section */}
+        {topSongs.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Songs</Text>
+            </View>
+            <FlatList
+              data={topSongs}
+              renderItem={renderSongItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
           </View>
+        )}
 
-          <FlatList
-            data={artistSongs}
-            renderItem={renderSongItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
+        {/* Top Albums Section */}
+        {topAlbums.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Albums</Text>
+            </View>
+            <FlatList
+              data={topAlbums}
+              renderItem={renderAlbumItem}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+        )}
+
+        {/* Singles Section */}
+        {singles.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Singles</Text>
+            </View>
+            <FlatList
+              data={singles}
+              renderItem={renderAlbumItem}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+        )}
+
+        {/* Similar Artists Section */}
+        {similarArtists.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Similar Artists</Text>
+            </View>
+            <FlatList
+              data={similarArtists}
+              renderItem={renderArtistItem}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+        )}
       </ScrollView>
+
+      {selectedSong && (
+        <Songinfo
+          isVisible={isSongInfoVisible}
+          onClose={() => setIsSongInfoVisible(false)}
+          song={selectedSong}
+        />
+      )}
     </View>
   );
 };
@@ -167,14 +317,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 10,
+    paddingBottom: 12,
   },
   backButton: {
     padding: 8,
   },
   searchButton: {
-    marginLeft: 'auto',
     padding: 8,
   },
   moreButton: {
@@ -187,24 +335,27 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   artistCover: {
-    width: 280,
-    height: 280,
-    borderRadius: 24,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     marginBottom: 20,
   },
   artistName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: 8,
+    textAlign: 'center',
   },
   artistMeta: {
     fontSize: 14,
+    textAlign: 'center',
   },
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
     marginTop: 16,
+    marginBottom: 24,
   },
   shuffleButton: {
     flex: 1,
@@ -233,34 +384,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  songsSection: {
+  section: {
     paddingHorizontal: 20,
-    marginTop: 24,
-    paddingBottom: 40,
+    marginBottom: 32,
   },
-  songsSectionHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  songsTitle: {
+  sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   songItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   songCover: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 4,
   },
   songInfo: {
     flex: 1,
@@ -274,11 +421,45 @@ const styles = StyleSheet.create({
   songArtist: {
     fontSize: 14,
   },
-  songPlayButton: {
-    marginRight: 8,
-  },
   songMoreButton: {
     padding: 8,
+  },
+  horizontalList: {
+    paddingRight: 20,
+  },
+  albumItem: {
+    marginRight: 16,
+    width: 140,
+  },
+  albumCover: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  albumTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  albumYear: {
+    fontSize: 12,
+  },
+  similarArtistItem: {
+    marginRight: 16,
+    width: 100,
+    alignItems: 'center',
+  },
+  similarArtistImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 8,
+  },
+  similarArtistName: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
