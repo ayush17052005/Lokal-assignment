@@ -1,6 +1,7 @@
 import { useAudioPlayerStatus, useAudioPlayer as useExpoAudioPlayer } from 'expo-audio';
 import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { addToHistory } from '../store/slices/librarySlice';
 import {
     addToQueue,
     playNextInQueue,
@@ -85,6 +86,17 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const loadCurrentTrack = async () => {
         if (currentTrack && currentTrack.audioUrl) {
              try {
+                // Add to history
+                dispatch(addToHistory({
+                  id: currentTrack.id,
+                  type: 'song',
+                  title: currentTrack.title,
+                  subtitle: currentTrack.artist,
+                  image: currentTrack.coverUrl,
+                  timestamp: Date.now(),
+                  data: currentTrack.data || {},
+                }));
+
                 dispatch(setIsLoading(true));
                 console.log('Loading track from Redux change:', currentTrack.title);
                 player.replace({ uri: currentTrack.audioUrl });

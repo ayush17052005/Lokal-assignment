@@ -68,6 +68,7 @@ const AlbumDetails: React.FC<AlbumDetailsProps> = ({ route }) => {
       coverUrl,
       audioUrl,
       duration: song.duration,
+      data: song,
     };
   };
 

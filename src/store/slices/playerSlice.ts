@@ -7,6 +7,7 @@ export interface Track {
   coverUrl: string;
   audioUrl: string;
   duration: number; // in seconds
+  data?: any; // Original data object
 }
 
 interface PlayerState {

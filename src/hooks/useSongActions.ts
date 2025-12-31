@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { useAppDispatch } from '../store/hooks';
-import { addToHistory } from '../store/slices/librarySlice';
 import { RootStackParamList } from '../types/navigation';
 import { useAudioPlayer } from './useAudioPlayer';
 
@@ -49,17 +48,6 @@ export const useSongActions = () => {
       return;
     }
 
-    // Add to history/stats
-    dispatch(addToHistory({
-      id: song.id,
-      type: 'song',
-      title: song.name,
-      subtitle: artist,
-      image: coverUrl,
-      timestamp: Date.now(),
-      data: song, // Store full song object for re-playing
-    }));
-
     await loadTrack({
       id: song.id,
       title: song.name,
@@ -67,6 +55,7 @@ export const useSongActions = () => {
       coverUrl,
       audioUrl,
       duration: typeof song.duration === 'string' ? parseInt(song.duration) : song.duration,
+      data: song,
     });
 
     navigation.navigate('Player', {

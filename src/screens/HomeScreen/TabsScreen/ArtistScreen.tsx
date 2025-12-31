@@ -1,18 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-    ActivityIndicator,
     FlatList,
     Image,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { useSearchArtists } from '../../../api/hooks';
 import { useTheme } from '../../../context/ThemeContext';
+import { useAppSelector } from '../../../store/hooks';
 import { RootStackParamList } from '../../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -20,37 +19,52 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const ArtistScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { history } = useAppSelector((state) => state.library);
 
-  // Fetch artists (using search to get relevant artists)
-  const { data: artistsData, isLoading } = useSearchArtists({ query: 'MixSingh', limit: 20 });
-  const artists = artistsData?.data?.results || [];
+  const artists = useMemo(() => {
+    const artistMap = new Map();
+    
+    // Iterate through history to find unique artists
+    history.forEach(item => {
+      if (item.type === 'song' && item.data?.artists?.primary) {
+        item.data.artists.primary.forEach((artist: any) => {
+          if (!artistMap.has(artist.id)) {
+            // Find best image (prefer 150x150)
+            const image = artist.image?.find((img: any) => img.quality === '150x150')?.url 
+              || artist.image?.[0]?.url 
+              || 'https://picsum.photos/200/200';
+
+            artistMap.set(artist.id, {
+              id: artist.id,
+              name: artist.name,
+              image: image,
+            });
+          }
+        });
+      }
+    });
+
+    return Array.from(artistMap.values());
+  }, [history]);
 
   const handleArtistPress = (artist: any) => {
-    const imageUrl = artist.image?.find((img: any) => img.quality === '500x500')?.url || 
-                     artist.image?.[artist.image.length - 1]?.url || 
-                     'https://picsum.photos/200/200';
-
     navigation.navigate('ArtistDetails', {
       artistId: artist.id,
       name: artist.name,
-      albums: 0, // Default value as list might not have this
-      songs: 0, // Default value as list might not have this
-      imageUrl: imageUrl,
+      albums: 0,
+      songs: 0,
+      imageUrl: artist.image,
     });
   };
 
   const renderArtistItem = ({ item }: { item: any }) => {
-    const imageUrl = item.image?.find((img: any) => img.quality === '150x150')?.url || 
-                     item.image?.[0]?.url || 
-                     'https://picsum.photos/200/200';
-
     return (
       <TouchableOpacity 
         style={styles.artistItem}
         onPress={() => handleArtistPress(item)}
         activeOpacity={0.7}
       >
-        <Image source={{ uri: imageUrl }} style={styles.artistImage} />
+        <Image source={{ uri: item.image }} style={styles.artistImage} />
         <View style={styles.artistInfo}>
           <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>
             {item.name}
@@ -63,13 +77,13 @@ const ArtistScreen = () => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+  //       <ActivityIndicator size="large" color={colors.primary} />
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

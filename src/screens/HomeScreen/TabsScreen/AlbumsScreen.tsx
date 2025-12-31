@@ -1,17 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useArtistAlbums } from '../../../api/hooks';
 import { useTheme } from '../../../context/ThemeContext';
 import { useAppSelector } from '../../../store/hooks';
 import { RootStackParamList } from '../../../types/navigation';
@@ -23,32 +21,48 @@ const AlbumsScreen = () => {
   const navigation = useNavigation<NavigationProp>();
 
   const { history } = useAppSelector((state) => state.library);
-  const recentlyPlayed = history.filter(item => item.type === 'song');
-  const lastPlayedSongData = recentlyPlayed[0]?.data;
-  const lastArtistId = lastPlayedSongData?.artists?.primary?.[0]?.id || '';
 
-  const { data: albumsData, isLoading } = useArtistAlbums(lastArtistId, undefined, {
-    enabled: !!lastArtistId,
-  });
+  const albums = useMemo(() => {
+    const albumMap = new Map();
+    
+    // Iterate through history to find unique albums
+    history.forEach(item => {
+      if (item.type === 'song' && item.data?.album) {
+        const albumId = item.data.album.id;
+        if (!albumMap.has(albumId)) {
+          // Use song image as album cover since song object has it
+          const imageUrl = item.data.image?.find((img: any) => img.quality === '500x500')?.url || 
+                           item.data.image?.[0]?.url || 
+                           'https://picsum.photos/300/300';
 
-  const albums = albumsData?.data?.albums || [];
+          albumMap.set(albumId, {
+            id: albumId,
+            name: item.data.album.name,
+            artist: item.data.artists?.primary?.[0]?.name || 'Unknown Artist',
+            year: item.data.year || '',
+            songCount: 1, // We don't have total count from song object, but that's okay
+            image: [{ url: imageUrl }], // Mock image structure to match renderItem expectation
+          });
+        }
+      }
+    });
+
+    return Array.from(albumMap.values());
+  }, [history]);
 
   const handleAlbumPress = (album: any) => {
-    console.log(album.id)
     navigation.navigate('AlbumDetails', {
       albumId: album.id,
       name: album.name,
-      artist: album.primaryArtists || 'Unknown Artist',
-      year: album.year || '',
-      songs: album.songCount || 0,
-      imageUrl: album.image?.[2]?.url || album.image?.[0]?.url || 'https://picsum.photos/300/300',
+      artist: album.artist,
+      year: album.year,
+      songs: album.songCount,
+      imageUrl: album.image?.[0]?.url,
     });
   };
 
   const renderAlbumItem = ({ item, index }: { item: any; index: number }) => {
-    const imageUrl = item.image?.find((img: any) => img.quality === '500x500')?.url || 
-                     item.image?.[0]?.url || 
-                     'https://picsum.photos/300/300';
+    const imageUrl = item.image?.[0]?.url;
 
     return (
       <TouchableOpacity 
@@ -63,10 +77,7 @@ const AlbumsScreen = () => {
             {item.name}
           </Text>
           <Text style={[styles.albumMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-            {item.year}
-          </Text>
-          <Text style={[styles.albumSongs, { color: colors.textSecondary }]}>
-            {item.songCount || 0} songs
+            {item.artist} • {item.year}
           </Text>
           </View>
           <View>
@@ -79,13 +90,13 @@ const AlbumsScreen = () => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+  //       <ActivityIndicator size="large" color={colors.primary} />
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -107,7 +118,7 @@ const AlbumsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {lastArtistId ? 'No albums found' : 'Play a song to get album recommendations'}
+              Play songs to see albums here
             </Text>
           </View>
         }

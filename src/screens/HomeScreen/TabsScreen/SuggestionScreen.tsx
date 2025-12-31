@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useArtistSongs } from '../../../api/hooks';
+import { useArtistSongs, useSongSuggestions } from '../../../api/hooks';
 import { useTheme } from '../../../context/ThemeContext';
 import { useSongActions } from '../../../hooks';
 import { useAppSelector } from '../../../store/hooks';
@@ -31,9 +31,9 @@ const SuggestionScreen = () => {
   const lastArtistId = lastPlayedSongData?.artists?.primary?.[0]?.id;
   const lastArtistName = lastPlayedSongData?.artists?.primary?.[0]?.name;
 
-  // const { data: suggestionsData, isLoading: isSuggestionsLoading } = useSongSuggestions(lastPlayedSongId, {
-  //   enabled: !!lastPlayedSongId,
-  // });
+  const { data: suggestionsData, isLoading: isSuggestionsLoading } = useSongSuggestions(lastPlayedSongId, {
+    enabled: !!lastPlayedSongId,
+  });
 
   const { data: artistSongsData, isLoading: isArtistSongsLoading } = useArtistSongs(lastArtistId, undefined, {
     enabled: !!lastArtistId,
@@ -107,48 +107,49 @@ const SuggestionScreen = () => {
       style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Recommended for You
-      {lastPlayedSongId && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Recommended for You
-            </Text>
-          </View>
-          {isSuggestionsLoading ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
-          ) : suggestionsData?.data ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {suggestionsData.data.map((item: any, index: number) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.songCard, index === 0 && styles.firstCard]}
-                  onPress={() => handlePlaySong(item)}
-                >
-                  <Image
-                    source={{ uri: getImageUrl(item) }}
-                    style={styles.songCover}
-                  />
-                  <Text
-                    style={[styles.songTitle, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {item.name}
-                  </Text>
-                  <Text
-                    style={[styles.songArtist, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {getArtistName(item)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            renderEmptyState('No recommendations available')
+      {/* Recently Played */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Recently Played
+          </Text>
+          {recentlyPlayed.length > 0 && (
+            <TouchableOpacity>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+            </TouchableOpacity>
           )}
         </View>
-      )} */}
+        {recentlyPlayed.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {recentlyPlayed.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.songCard, index === 0 && styles.firstCard]}
+                onPress={() => handlePlaySong(item)}
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.songCover}
+                />
+                <Text
+                  style={[styles.songTitle, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.songArtist, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          renderEmptyState('Play some music to see your history')
+        )}
+      </View>
 
       {/* More from Artist */}
       {lastArtistId && (
@@ -193,49 +194,48 @@ const SuggestionScreen = () => {
         </View>
       )}
 
-      {/* Recently Played */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Recently Played
-          </Text>
-          {recentlyPlayed.length > 0 && (
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
-            </TouchableOpacity>
+      {/* Recommended for You */}
+      {/* {lastPlayedSongId && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Recommended for You
+            </Text>
+          </View>
+          {isSuggestionsLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
+          ) : suggestionsData?.data ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {suggestionsData.data.map((item: any, index: number) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.songCard, index === 0 && styles.firstCard]}
+                  onPress={() => handlePlaySong(item)}
+                >
+                  <Image
+                    source={{ uri: getImageUrl(item) }}
+                    style={styles.songCover}
+                  />
+                  <Text
+                    style={[styles.songTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={[styles.songArtist, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {getArtistName(item)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            renderEmptyState('No recommendations available')
           )}
         </View>
-        {recentlyPlayed.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {recentlyPlayed.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.songCard, index === 0 && styles.firstCard]}
-                onPress={() => handlePlaySong(item)}
-              >
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.songCover}
-                />
-                <Text
-                  style={[styles.songTitle, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[styles.songArtist, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {item.subtitle}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : (
-          renderEmptyState('Play some music to see your history')
-        )}
-      </View>
+      )} */}
 
       {/* Artists */}
       <View style={styles.section}>
