@@ -19,5 +19,11 @@ export type RootStackParamList = {
     songs: number;
     imageUrl: string;
   };
+  Playlists: undefined;
+  PlaylistDetails: {
+    playlistId: string;
+    name: string;
+    imageUrl: string;
+  };
   Search: undefined;
 };

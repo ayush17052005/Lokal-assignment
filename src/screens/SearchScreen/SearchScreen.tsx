@@ -318,6 +318,11 @@ const SearchScreen = () => {
     return (
       <TouchableOpacity
         style={styles.resultItem}
+        onPress={() => navigation.navigate('PlaylistDetails', {
+          playlistId: item.id,
+          name: item.title || item.name,
+          imageUrl: coverUrl,
+        })}
         activeOpacity={0.7}
       >
         <Image source={{ uri: coverUrl }} style={styles.resultCover} />

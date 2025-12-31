@@ -6,6 +6,8 @@ import { useTheme } from '../context/ThemeContext';
 import AlbumDetails from '../screens/AlbumScreen/AlbumDetails';
 import ArtistDetails from '../screens/ArtistScreen/ArtistDetails';
 import HomeScreen from '../screens/HomeScreen/HomeScreen';
+import PlaylistDetails from '../screens/PlaylistScreen/PlaylistDetails';
+import PlaylistsScreen from '../screens/PlaylistScreen/PlaylistsScreen';
 import SearchScreen from '../screens/SearchScreen/SearchScreen';
 import { RootStackParamList } from '../types/navigation';
 
@@ -73,6 +75,16 @@ const AppNavigator = () => {
             component={AlbumDetails}
         />
         
+        <Stack.Screen 
+          name="Playlists" 
+          component={PlaylistsScreen}
+        />
+
+        <Stack.Screen 
+          name="PlaylistDetails" 
+          component={PlaylistDetails}
+        />
+
         <Stack.Screen 
           name="Search" 
           component={SearchScreen}
