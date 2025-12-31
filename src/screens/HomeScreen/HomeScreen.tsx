@@ -12,6 +12,7 @@ import {
 import MiniPlayer from '../../components/MiniPlayer/MiniPlayer';
 import SettingsModal from '../../components/Settings/SettingsModal';
 import { useTheme } from '../../context/ThemeContext';
+import { useAppSelector } from '../../store/hooks';
 import { RootStackParamList } from '../../types/navigation';
 import FavoritesScreen from '../FavoriteScreen/FavoritesScreen';
 import PlaylistsScreen from '../PlaylistScreen/PlaylistsScreen';
@@ -29,13 +30,14 @@ const HomeScreen = ({ navigation }: Props) => {
   const [activeTab, setActiveTab] = useState<TabType>('Suggested');
   const [activeBottomTab, setActiveBottomTab] = useState<'Home' | 'Playlists' | 'Favorites'>('Home');
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const { history } = useAppSelector((state) => state.library);
 
   const tabs: TabType[] = ['Suggested', 'Songs', 'Artists', 'Albums'];
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Suggested':
-        return <SuggestionScreen onSwitchTab={setActiveTab} />;
+        return history.length > 0 ? <SuggestionScreen onSwitchTab={setActiveTab} /> : <PlaylistsScreen />;
       case 'Songs':
         return <SongsScreen />;
       case 'Artists':
@@ -43,7 +45,7 @@ const HomeScreen = ({ navigation }: Props) => {
       case 'Albums':
         return <AlbumsScreen />;
       default:
-        return <SuggestionScreen onSwitchTab={setActiveTab} />;
+        return history.length > 0 ? <SuggestionScreen onSwitchTab={setActiveTab} /> : <PlaylistsScreen />;
     }
   };
 

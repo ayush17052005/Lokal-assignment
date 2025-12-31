@@ -99,7 +99,7 @@ const ArtistScreen = () => {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No artists found</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Start exploring to find artists!</Text>
           </View>
         }
       />

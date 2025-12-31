@@ -84,7 +84,7 @@ const SongsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No songs found
+              Start exploring to find songs!
             </Text>
           </View>
         }
